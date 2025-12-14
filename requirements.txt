@@ -11,3 +11,4 @@ scipy
 #google-auth-httplib2
 #google-auth-oauthlib
 python_dotenv~=1.2
+requests~=2.32
