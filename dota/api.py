@@ -3,7 +3,7 @@ from logging import getLogger
 import pandas as pd
 import requests
 
-from constants import TEAM_NAMES_FILE, RAW_FILE
+from constants import TEAM_NAMES_FILE, RAW_FILE, LATEST_RAW_FILE
 
 logger = getLogger(__name__)
 
@@ -28,9 +28,8 @@ DEFAULT_QUERY = f"""SELECT *
     JOIN leagues using(leagueid)
     WHERE name not like '%Division II%'
     AND leagues.TIER in ('professional','premium') 
-    AND start_time < 1765468325
     ORDER BY matches.start_time DESC
-    LIMIT 4000"""
+    LIMIT 1000"""
 
 
 def fetch_dota_data_from_api(sql_query=DEFAULT_QUERY):
@@ -48,5 +47,5 @@ def fetch_dota_data_from_api(sql_query=DEFAULT_QUERY):
     df = pd.concat([df_new, df_raw])
     df = df.drop_duplicates('match_id')
     df.to_csv(RAW_FILE, index=False, header=True)
-    # df2 = df[df['start_time'] >= (pd.Timestamp.now() - pd.DateOffset(months=6)).timestamp()]
-    # df2.to_csv(LATEST_RAW_FILE, index=False, header=True)
+    df2 = df[df['start_time'] >= (pd.Timestamp.now() - pd.DateOffset(months=6)).timestamp()]
+    df2.to_csv(LATEST_RAW_FILE, index=False, header=True)

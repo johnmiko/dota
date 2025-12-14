@@ -6,8 +6,8 @@ scipy
 #sqlalchemy
 #pymysql
 #django
-google-api-python-client
-google-auth
-google-auth-httplib2
-google-auth-oauthlib
+#google-api-python-client
+#google-auth
+#google-auth-httplib2
+#google-auth-oauthlib
 python_dotenv~=1.2

@@ -1,5 +1,6 @@
 import ast
 import statistics
+from collections import Counter
 from datetime import datetime
 from logging import getLogger
 
@@ -198,4 +199,15 @@ def calc_gold_lead_is_small(df, i, radiant_gold_adv):
     # Percentage of minutes where the lead was less than 5000 gold
     pct_lead_small = lead_is_small / len(radiant_gold_adv)
     df.loc[i, 'lead_is_small'] = pct_lead_small
+    return df
+
+
+def add_total_objectives_cols(df, i):
+    row = df.loc[i]
+    if not pd.isna(row["objectives"]):
+        objectives = ast.literal_eval(row["objectives"])
+        totals = Counter(d['type'] for d in objectives)
+        # TODO: Not checking if a new objective exists, want to know if the data has changed
+        for k, v in totals.items():
+            df.loc[i, k] = v
     return df

@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 
 from calcs import calc_teamfight_stats, calc_gold_adv_rate, calc_gold_adv_std, calc_min_in_lead, \
-    calc_max_gold_swing, calc_gold_lead_is_small, get_team_names_and_ranks, calc_time_ago, create_title, calc_game_num
+    calc_max_gold_swing, calc_gold_lead_is_small, get_team_names_and_ranks, calc_time_ago, create_title, calc_game_num, \
+    add_total_objectives_cols
 from constants import SCORES_CSV_FILE, ALREADY_WATCHED_FILE, SCORES_ALL_COLS_CSV_FILE, \
     HIGHLIGHTS_SCORE_COLS, \
     RAW_FILE, TEAMS_I_LIKE, REDO_HISTORIC_SCORES, WHOLE_GAME_SCORE_COLS, LATEST_RAW_FILE
@@ -35,6 +36,12 @@ def clean_df_and_fill_nas(df):
     df['date'] = pd.to_datetime(df['start_time'], unit='s')
     df['name'] = df['name'].fillna('')
     df = df[~df['name'].str.contains('Division II')]
+    known_objectives = ['CHAT_MESSAGE_COURIER_LOST', 'CHAT_MESSAGE_FIRSTBLOOD', 'building_kill',
+                        'CHAT_MESSAGE_ROSHAN_KILL', 'CHAT_MESSAGE_AEGIS_STOLEN',
+                        'CHAT_MESSAGE_AEGIS', 'CHAT_MESSAGE_DENIED_AEGIS', 'CHAT_MESSAGE_MINIBOSS_KILL']
+    # miniboss is tormentor
+    for objective in known_objectives:
+        df[objective] = df.get(objective, 0)
     return df
 
 
@@ -46,6 +53,7 @@ def get_and_score_func():
     if df.empty:
         return
     df = clean_df_and_fill_nas(df)
+    df['best_of'] = df['series_type'].map({0: 1, 1: 3, 2: 5})
     df_watched = pd.read_csv(ALREADY_WATCHED_FILE, header=0)
     df_watched['last_watched_on'] = df_watched['last_watched_on'].fillna(datetime.today())
     df_watched['times_watched'] = df_watched['times_watched'].fillna(1)
@@ -66,6 +74,7 @@ def get_and_score_func():
     for i, row in df.iterrows():
         # radiant_gold_adv = df.loc[i, 'radiant_gold_adv']
         teamfights = df.loc[i, 'teamfights']
+        df = add_total_objectives_cols(df, i)
         if teamfights is None:
             df.loc[i, 'first_fight_at'] = 10000
             df.loc[i, 'fight_%_of_game'] = 0
@@ -141,7 +150,10 @@ def get_and_score_func():
     df['interesting_score'] = df[['lead_is_small_score', 'min_in_lead_score', 'duration_min_score', 'swing_score',
                                   'barracks_comeback_score']].max(axis=1)
     # increase weight of interestingness score
-    df['interesting_score'] = df['interesting_score'] * 2
+    weights = {c: 1 for c in HIGHLIGHTS_SCORE_COLS}
+    weights['interesting_score'] = 2
+    df[HIGHLIGHTS_SCORE_COLS] = df[HIGHLIGHTS_SCORE_COLS].apply(pd.to_numeric, errors='coerce')
+    df['highlights_score'] = df[HIGHLIGHTS_SCORE_COLS].mul(pd.Series(weights)).sum(axis=1)
     df[HIGHLIGHTS_SCORE_COLS] = df[HIGHLIGHTS_SCORE_COLS].apply(pd.to_numeric, errors='coerce')
     df['highlights_score'] = df[HIGHLIGHTS_SCORE_COLS].sum(axis=1)
     df['highlights_score'] = df['highlights_score'].astype('float')

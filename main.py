@@ -8,7 +8,6 @@ from utils import update_df_watched
 run_tracker = RunTracker(LAST_RUN_FILE)
 
 if run_tracker.should_run("last_fetched_data", 4):
-    # adds new data to RAW_FILE
     fetch_dota_data_from_api()
 if run_tracker.should_run("last_got_team_names", 4):
     get_team_names_and_ranks_from_api()
