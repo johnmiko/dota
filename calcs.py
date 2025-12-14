@@ -162,8 +162,9 @@ def calc_time_ago(df):
 #     return df
 
 
-def get_team_names_and_ranks(df):
-    df_teams = pd.read_csv(TEAM_NAMES_FILE)
+def get_team_names_and_ranks(df, df_teams=None):
+    if df_teams is None:
+        df_teams = pd.read_csv(TEAM_NAMES_FILE)
     df_teams["rank"] = df_teams.index + 1
     df = df.merge(df_teams[['team_id', 'name', 'rank']], how='left', left_on='radiant_team_id', right_on='team_id')
     df = df.merge(df_teams[['team_id', 'name', 'rank']], how='left', left_on='dire_team_id', right_on='team_id')
