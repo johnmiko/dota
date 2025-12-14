@@ -9,7 +9,7 @@ import pandas as pd
 import requests
 
 from calcs import calc_teamfight_stats, calc_gold_adv_rate, calc_gold_adv_std, calc_min_in_lead, \
-    calc_max_gold_swing, calc_game_is_close, get_team_names, calc_time_ago, create_title, calc_game_num
+    calc_max_gold_swing, calc_gold_lead_is_small, get_team_names, calc_time_ago, create_title, calc_game_num
 from constants import RAW_FILE, SCORES_CSV_FILE, ALREADY_WATCHED_FILE, SCORES_ALL_COLS_CSV_FILE, DATE_STR_FORMAT, \
     HIGHLIGHTS_SCORE_COLS
 from score import linear_map
@@ -85,7 +85,7 @@ for i, row in df.iterrows():
         df = calc_gold_adv_std(df, i, radiant_gold_adv)
         df = calc_min_in_lead(df, i, radiant_gold_adv)
         df = calc_max_gold_swing(df, i, radiant_gold_adv)
-        df = calc_game_is_close(df, i, radiant_gold_adv)
+        df = calc_gold_lead_is_small(df, i, radiant_gold_adv)
 df['swing'] = df['swing'].astype(int)
 df['lead_is_small'] = df['lead_is_small'].astype(float)
 

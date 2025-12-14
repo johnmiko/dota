@@ -3,17 +3,21 @@ from logging import getLogger
 import pandas as pd
 import requests
 
-from constants import TEAM_NAMES_FILE, RAW_FILE, LATEST_RAW_FILE
+from constants import TEAM_NAMES_FILE, RAW_FILE
 
 logger = getLogger(__name__)
 
 
 def get_team_names_and_ranks_from_api():
-    teams_url = 'https://api.opendota.com/api/teams?limit=200'
+    # https://docs.opendota.com#tag/teams
+    # ?page=1
+    teams_url = 'https://api.opendota.com/api/teams'
     logger.info("fetching team names and ranks")
     r = requests.get(teams_url)
     teams_raw = r.json()
     df_teams = pd.DataFrame(teams_raw)
+    df_teams = df_teams.sort_values(by='rank', ascending=False)
+    # match_id seems to be null for teams that do not exist anymore (example optic gaming)
     df_teams = df_teams[~df_teams["match_id"].isna()]
     # maybe better to write just the json data to file, not sure
     df_teams.to_csv(TEAM_NAMES_FILE, index=False, header=True)
@@ -23,8 +27,10 @@ DEFAULT_QUERY = f"""SELECT *
     FROM matches
     JOIN leagues using(leagueid)
     WHERE name not like '%Division II%'
+    AND leagues.TIER in ('professional','premium') 
+    AND start_time < 1765468325
     ORDER BY matches.start_time DESC
-    LIMIT 1000"""
+    LIMIT 4000"""
 
 
 def fetch_dota_data_from_api(sql_query=DEFAULT_QUERY):
@@ -42,5 +48,5 @@ def fetch_dota_data_from_api(sql_query=DEFAULT_QUERY):
     df = pd.concat([df_new, df_raw])
     df = df.drop_duplicates('match_id')
     df.to_csv(RAW_FILE, index=False, header=True)
-    df2 = df[df['start_time'] >= (pd.Timestamp.now() - pd.DateOffset(months=6)).timestamp()]
-    df2.to_csv(LATEST_RAW_FILE, index=False, header=True)
+    # df2 = df[df['start_time'] >= (pd.Timestamp.now() - pd.DateOffset(months=6)).timestamp()]
+    # df2.to_csv(LATEST_RAW_FILE, index=False, header=True)

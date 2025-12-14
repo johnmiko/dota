@@ -184,12 +184,18 @@ def create_title(df):
     return df
 
 
-def calc_game_is_close(df, i, radiant_gold_adv):
+def calc_gold_lead_is_small(df, i, radiant_gold_adv):
     # radiant gold advantage is a list containing how much gold radiant was winning by at minute intervals
+    # ex: [0, -16, -281, -378, -262, -576, -798, -916, -954, -1345, -2055, -1913...
     if not radiant_gold_adv:
         df.loc[i, 'lead_is_small'] = 0
         return df
-    lead_is_small = sum(abs(i) < 5000 for i in radiant_gold_adv)
+    # Number of minutes where the lead was less than 5000 gold
+    game_length_in_minutes = len(radiant_gold_adv)
+    # If the game was less than 5 minutes long, don't count it
+    start_index = game_length_in_minutes if len(radiant_gold_adv) < 5 else 5
+    lead_is_small = sum(abs(i) < 5000 for i in radiant_gold_adv[start_index:])
+    # Percentage of minutes where the lead was less than 5000 gold
     pct_lead_small = lead_is_small / len(radiant_gold_adv)
     df.loc[i, 'lead_is_small'] = pct_lead_small
     return df
