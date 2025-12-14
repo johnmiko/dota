@@ -5,7 +5,6 @@ from logging import getLogger
 
 import numpy as np
 import pandas as pd
-import requests
 
 from constants import TEAM_NAMES_FILE
 
@@ -134,13 +133,43 @@ def calc_time_ago(df):
     return df
 
 
-def get_team_names(df):
+# def get_team_names_and_ranks(df):
+#     df = df.copy()
+#
+#     # If df has a 'name' column and it's the tournament, lock that in first
+#     if "name" in df.columns and "tournament" not in df.columns:
+#         df = df.rename(columns={"name": "tournament"})
+#
+#     df_teams = pd.read_csv(TEAM_NAMES_FILE).reset_index(names="rank")
+#
+#     # dire
+#     dire = df_teams.rename(columns={
+#         "team_id": "dire_team_id",
+#         "name": "dire_team_name",
+#         "rank": "dire_team_rank",
+#     })[["dire_team_id", "dire_team_name", "dire_team_rank"]]
+#
+#     # radiant
+#     rad = df_teams.rename(columns={
+#         "team_id": "radiant_team_id",
+#         "name": "radiant_team_name",
+#         "rank": "radiant_team_rank",
+#     })[["radiant_team_id", "radiant_team_name", "radiant_team_rank"]]
+#
+#     df = df.merge(dire, on="dire_team_id", how="left", validate="m:1")
+#     df = df.merge(rad, on="radiant_team_id", how="left", validate="m:1")
+#     return df
+
+
+def get_team_names_and_ranks(df):
     df_teams = pd.read_csv(TEAM_NAMES_FILE)
-    df = df.merge(df_teams[['team_id', 'name']], how='left', left_on='dire_team_id', right_on='team_id')
-    df = df.merge(df_teams[['team_id', 'name']], how='left', left_on='radiant_team_id', right_on='team_id')
-    df['dire_team_name'] = df['name']
-    df['radiant_team_name'] = df['name_y']
-    df['tournament'] = df['name_x']
+    df_teams["rank"] = df_teams.index + 1
+    df = df.merge(df_teams[['team_id', 'name', 'rank']], how='left', left_on='radiant_team_id', right_on='team_id')
+    df = df.merge(df_teams[['team_id', 'name', 'rank']], how='left', left_on='dire_team_id', right_on='team_id')
+    df['radiant_team_name'] = df['name_x']
+    df["radiant_team_rank"] = df["rank_x"]
+    df['dire_team_name'] = df['name_y']
+    df["dire_team_rank"] = df["rank_y"]
     return df
 
 

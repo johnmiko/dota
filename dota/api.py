@@ -3,12 +3,12 @@ from logging import getLogger
 import pandas as pd
 import requests
 
-from constants import TEAM_NAMES_FILE, RAW_FILE
+from constants import TEAM_NAMES_FILE, RAW_FILE, LATEST_RAW_FILE
 
 logger = getLogger(__name__)
 
 
-def get_team_names_and_ranks():
+def get_team_names_and_ranks_from_api():
     teams_url = 'https://api.opendota.com/api/teams?limit=200'
     logger.info("fetching team names and ranks")
     r = requests.get(teams_url)
@@ -42,3 +42,5 @@ def fetch_dota_data_from_api(sql_query=DEFAULT_QUERY):
     df = pd.concat([df_new, df_raw])
     df = df.drop_duplicates('match_id')
     df.to_csv(RAW_FILE, index=False, header=True)
+    df2 = df[df['start_time'] >= (pd.Timestamp.now() - pd.DateOffset(months=6)).timestamp()]
+    df2.to_csv(LATEST_RAW_FILE, index=False, header=True)

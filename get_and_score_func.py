@@ -8,21 +8,22 @@ import numpy as np
 import pandas as pd
 
 from calcs import calc_teamfight_stats, calc_gold_adv_rate, calc_gold_adv_std, calc_min_in_lead, \
-    calc_max_gold_swing, calc_game_is_close, get_team_names, calc_time_ago, create_title, calc_game_num
+    calc_max_gold_swing, calc_game_is_close, get_team_names_and_ranks, calc_time_ago, create_title, calc_game_num
 from constants import SCORES_CSV_FILE, ALREADY_WATCHED_FILE, SCORES_ALL_COLS_CSV_FILE, \
     HIGHLIGHTS_SCORE_COLS, \
-    RAW_FILE, TEAMS_I_LIKE, REDO_SCORES, WHOLE_GAME_SCORE_COLS
+    RAW_FILE, TEAMS_I_LIKE, REDO_HISTORIC_SCORES, WHOLE_GAME_SCORE_COLS, LATEST_RAW_FILE
 from score import linear_map
 
 logger = getLogger(__name__)
 
 
 def get_df_of_games_that_need_scored():
-    df_raw = pd.read_csv(RAW_FILE)
-    if REDO_SCORES:
+    if REDO_HISTORIC_SCORES:
+        df_raw = pd.read_csv(RAW_FILE)
         logger.info("recalculating all scores")
         df = df_raw
     else:
+        df_raw = pd.read_csv(LATEST_RAW_FILE)
         logger.info("only calculating scores for new games")
         df_scored = pd.read_csv(SCORES_ALL_COLS_CSV_FILE)
         df = df_raw[~df_raw["match_id"].isin(df_scored["match_id"])]
@@ -53,9 +54,8 @@ def get_and_score_func():
     df['total_kills'] = df['radiant_score'] + df['dire_score']
     df['duration_min'] = (df['duration'] / 60).round()
     df['kills_per_min'] = df['total_kills'] / df['duration_min']
-    # makes an API call. Would need to add a last called file, write the team names to file? Just read file?
-    # Try just reading file, if there is a new team, we would get an exception and then we can call the API
-    df = get_team_names(df)
+    df = df.rename(columns={"name": "tournament"})
+    df = get_team_names_and_ranks(df)
     df = calc_time_ago(df)
     df = calc_game_num(df)
     df = create_title(df)
@@ -140,6 +140,8 @@ def get_and_score_func():
     # Do OR operation of these
     df['interesting_score'] = df[['lead_is_small_score', 'min_in_lead_score', 'duration_min_score', 'swing_score',
                                   'barracks_comeback_score']].max(axis=1)
+    # increase weight of interestingness score
+    df['interesting_score'] = df['interesting_score'] * 2
     df[HIGHLIGHTS_SCORE_COLS] = df[HIGHLIGHTS_SCORE_COLS].apply(pd.to_numeric, errors='coerce')
     df['highlights_score'] = df[HIGHLIGHTS_SCORE_COLS].sum(axis=1)
     df['highlights_score'] = df['highlights_score'].astype('float')

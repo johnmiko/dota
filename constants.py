@@ -15,7 +15,8 @@ TEXT_DIR = os.getenv("TEXT_DIR", "C:/Users/johnm/OneDrive/miscellaneous/ccode_fi
 SCORES_ALL_COLS_CSV_FILE = f'{TEXT_DIR}/scores_all_cols.csv'
 SCORES_CSV_FILE = f'{TEXT_DIR}/scores.csv'
 YOUTUBE_CSV_FILE = f'{TEXT_DIR}/scores_and_urls.csv'
-RAW_FILE = f'{TEXT_DIR}/raw.csv'
+RAW_FILE = f'{TEXT_DIR}/historic.csv'
+LATEST_RAW_FILE = f'{TEXT_DIR}/last_6_months.csv'
 ALREADY_WATCHED_FILE = f'{TEXT_DIR}/already_watched.txt'
 LAST_GOT_HIGHLIGHT_VIDEOS = f'{TEXT_DIR}/last_got_highlight_videos.txt'
 LAST_RUN_FILE = f'{TEXT_DIR}/last_run.json'
@@ -53,10 +54,10 @@ TEAMS_I_LIKE = ['lgd', 'boom esports',
                 'HEROIC',
                 'Team Falcons']
 # Just using highlights score, but just been watching whole games
-REDO_SCORES = os.getenv("REDO_SCORES", "False")
-if (REDO_SCORES != "True") and (REDO_SCORES != "False"):
-    raise ValueError("REDO_SCORES must be True or False")
-REDO_SCORES = REDO_SCORES == "True"  # convert to bool
+redo_historic_scores = os.getenv("REDO_HISTORIC_SCORES", "False")
+if (redo_historic_scores != "True") and (redo_historic_scores != "False"):
+    raise ValueError("REDO_HISTORIC_SCORES must be True or False")
+REDO_HISTORIC_SCORES = redo_historic_scores == "True"  # convert to bool
 HIGHLIGHTS_SCORE_COLS = ['fight_%_of_game', 'interesting_score', 'days_ago_score', 'good_team_playing_score']
 WHOLE_GAME_SCORE_COLS = ['kills_per_min_score', 'swing_score', 'fight_%_of_game', 'days_ago_score',
                          'good_team_playing_score']
