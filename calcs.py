@@ -205,8 +205,12 @@ def calc_gold_lead_is_small(df, i, radiant_gold_adv):
 
 def add_total_objectives_cols(df, i):
     row = df.loc[i]
-    if not pd.isna(row["objectives"]):
+    if type(row["objectives"]) != list:
         objectives = ast.literal_eval(row["objectives"])
+    else:
+        objectives = row["objectives"]
+    # catches the case where objectives is NaN
+    if type(objectives) == list:
         totals = Counter(d['type'] for d in objectives)
         # TODO: Not checking if a new objective exists, want to know if the data has changed
         for k, v in totals.items():

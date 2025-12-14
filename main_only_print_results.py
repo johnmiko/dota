@@ -34,7 +34,7 @@ logger.info("fetching team names and ranks")
 r = requests.get(teams_url)
 teams_raw = r.json()
 df_teams = pd.DataFrame(teams_raw)
-df_teams = df_teams.sort_values(by='rank', ascending=False)
+df_teams = df_teams.sort_values(by='rating', ascending=False)
 # match_id seems to be null for teams that do not exist anymore (example optic gaming)
 df_teams = df_teams[~df_teams["match_id"].isna()]
 # maybe better to write just the json data to file, not sure
@@ -150,7 +150,7 @@ if mask.any():
         (df[['radiant_team_name', 'dire_team_name']] == '???').any(axis=1), ['highlights_score']] = \
         df[['highlights_score']] / 2
 df = df.sort_values('highlights_score', ascending=False)
-df_scores = df[['title', 'time_ago', 'highlights_score', 'watched', 'tournament']]
+df_scores = df[['title', 'time_ago', 'highlights_score', 'tournament']]
 print(df_scores.head(50).to_string())
 
 print("finished")
