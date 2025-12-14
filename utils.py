@@ -1,10 +1,11 @@
+import json
 from datetime import datetime
 from logging import getLogger
 
 import pandas as pd
 from pandas.errors import EmptyDataError
 
-from constants import DATE_STR_FORMAT, ALREADY_WATCHED_FILE
+from constants import DATE_STR_FORMAT, ALREADY_WATCHED_FILE, LAST_RUN_FILE
 from ease_of_use import pdf
 
 logger = getLogger(__name__)
@@ -71,23 +72,46 @@ def last_ran(filename):
         last_ran_str = f.read()
     last_ran_date = datetime.strptime(last_ran_str, DATE_STR_FORMAT)
     with open(filename, 'w') as f:
-        f.write(datetime.utcnow().strftime(DATE_STR_FORMAT))
+        f.write(datetime.now().strftime(DATE_STR_FORMAT))
     return last_ran_date
 
 
-def should_run(last_ran_file, run_every_x_hours):
-    last_ran_date = last_ran(last_ran_file)
-    utc_now = datetime.utcnow()
+# def should_run_based_on_file(last_ran_file, run_every_x_hours):
+#     last_ran_date = last_ran(last_ran_file)
+#     utc_now = datetime.utcnow()
+#     delta = utc_now - last_ran_date
+#     delta_seconds = delta.days * 3600 * 24 + delta.seconds
+#     delta_hours = round(delta_seconds / 3600, 1)
+#     should_run = delta_hours > run_every_x_hours
+#     if should_run:
+#         status = 'running'
+#     else:
+#         status = 'skipping'
+#     logger.info(f'last ran {delta_hours} hours ago, {status} {last_ran_file}')
+#     return should_run
+
+
+def should_run(last_ran_dict, key, run_every_x_hours):
+    # should run based on dict
+    try:
+        last_ran_date = last_ran_dict[key]
+    except KeyError:
+        last_ran_dict[key] = datetime.now()
+        with open(LAST_RUN_FILE, "w") as f:
+            json.dump(last_ran_dict, f)
+        logger.info(f'key not found, running {key}')
+        return True
+    utc_now = datetime.now()
     delta = utc_now - last_ran_date
     delta_seconds = delta.days * 3600 * 24 + delta.seconds
     delta_hours = round(delta_seconds / 3600, 1)
-    should_run = delta_hours > run_every_x_hours
-    if should_run:
+    will_run = delta_hours > run_every_x_hours
+    if will_run:
         status = 'running'
     else:
         status = 'skipping'
-    logger.info(f'last ran {delta_hours} hours ago, {status} {last_ran_file}')
-    return should_run
+    logger.info(f'last ran {delta_hours} hours ago, {status} {key}')
+    return will_run
 
 
 def update_df_watched():

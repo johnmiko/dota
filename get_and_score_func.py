@@ -6,7 +6,6 @@ from logging import getLogger
 
 import numpy as np
 import pandas as pd
-import requests
 
 from calcs import calc_teamfight_stats, calc_gold_adv_rate, calc_gold_adv_std, calc_min_in_lead, \
     calc_max_gold_swing, calc_game_is_close, get_team_names, calc_time_ago, create_title, calc_game_num
@@ -18,35 +17,7 @@ from score import linear_map
 logger = getLogger(__name__)
 
 
-def fetch_dota_data_from_api():
-    update_data = True
-    if update_data:
-        pass
-    limit = 1000
-    url = f"""https://api.opendota.com/api/explorer?sql=SELECT * 
-    FROM matches
-    JOIN leagues using(leagueid)
-    WHERE name not like '%Division II%'
-    ORDER BY matches.start_time DESC
-    LIMIT {limit}"""
-    r = requests.get(url, timeout=45)
-    if r.status_code != 200:
-        print(r.text)
-    matches = r.json()['rows']
-    df_new = pd.DataFrame(matches)
-    df_raw = pd.read_csv(RAW_FILE)
-    df = pd.concat([df_new, df_raw])
-    df = df.drop_duplicates('match_id')
-    df.to_csv(RAW_FILE, index=False, header=True)
-
-
-def get_and_score_func():
-    # https://overwolf.github.io/api/media/replays/auto-highlights
-
-    # def get_interesting_games():
-    # do manually for now
-    # automated way - take the first (or last) row from df_raw, recalculate the score for it
-    # if the score is the same, that means we don't need to recalculate the scores
+def get_df_of_games_that_need_scored():
     df_raw = pd.read_csv(RAW_FILE)
     if REDO_SCORES:
         logger.info("recalculating all scores")
@@ -55,12 +26,25 @@ def get_and_score_func():
         logger.info("only calculating scores for new games")
         df_scored = pd.read_csv(SCORES_ALL_COLS_CSV_FILE)
         df = df_raw[~df_raw["match_id"].isin(df_scored["match_id"])]
-        if df.empty:
-            return
+    return df
+
+
+def clean_df_and_fill_nas(df):
     df['start_time'] = df['start_time'].fillna(0)
     df['date'] = pd.to_datetime(df['start_time'], unit='s')
     df['name'] = df['name'].fillna('')
     df = df[~df['name'].str.contains('Division II')]
+    return df
+
+
+def get_and_score_func():
+    # https://overwolf.github.io/api/media/replays/auto-highlights
+    # improvement - record the score metrics to a file, check if they have changed, if not, no need to recalculate
+    #   also leave in the manual option to manually recalculate the scores
+    df = get_df_of_games_that_need_scored()
+    if df.empty:
+        return
+    df = clean_df_and_fill_nas(df)
     df_watched = pd.read_csv(ALREADY_WATCHED_FILE, header=0)
     df_watched['last_watched_on'] = df_watched['last_watched_on'].fillna(datetime.today())
     df_watched['times_watched'] = df_watched['times_watched'].fillna(1)
@@ -137,10 +121,6 @@ def get_and_score_func():
     df.loc[df[col] < 7000, f'{col}_score'] = 0
     df.loc[df[col] > 12000, f'{col}_score'] = 1
 
-    col = 'date'
-    df[f'{col}_score'] = 0
-    # 7.33 patch date
-    df.loc[df[col] > datetime(2023, 4, 19), f'{col}_score'] = 1
     df['good_team_playing_score'] = 0
     df.loc[df["title"].str.contains('|'.join(TEAMS_I_LIKE, ), case=False), f'good_team_playing_score'] = 1
 

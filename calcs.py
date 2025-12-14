@@ -1,10 +1,15 @@
 import ast
 import statistics
 from datetime import datetime
+from logging import getLogger
 
 import numpy as np
 import pandas as pd
 import requests
+
+from constants import TEAM_NAMES_FILE
+
+logger = getLogger(__name__)
 
 
 def calc_gold_adv_rate(df, i, radiant_gold_adv):
@@ -107,7 +112,7 @@ def calc_teamfight_stats(df, i):
         secs_of_fighting += fight['end'] - fight['start']
         if fight['start'] < first_fight_at_in_secs:
             first_fight_at_in_secs = fight['start']
-    df['first_fight_at'] = df['first_fight_at'].astype('string')
+    # df['first_fight_at'] = df['first_fight_at'].astype('string')
     df.loc[i, 'first_fight_at'] = str(str(first_fight_at_in_secs // 60) + ':' + str(first_fight_at_in_secs % 60))
     df.loc[i, 'fight_%_of_game'] = secs_of_fighting / (df.loc[i, 'duration'] - first_fight_at_in_secs)
     return df
@@ -130,10 +135,7 @@ def calc_time_ago(df):
 
 
 def get_team_names(df):
-    teams_url = 'https://api.opendota.com/api/teams'
-    r = requests.get(teams_url)
-    teams_raw = r.json()
-    df_teams = pd.DataFrame(teams_raw)
+    df_teams = pd.read_csv(TEAM_NAMES_FILE)
     df = df.merge(df_teams[['team_id', 'name']], how='left', left_on='dire_team_id', right_on='team_id')
     df = df.merge(df_teams[['team_id', 'name']], how='left', left_on='radiant_team_id', right_on='team_id')
     df['dire_team_name'] = df['name']

@@ -17,10 +17,11 @@ SCORES_CSV_FILE = f'{TEXT_DIR}/scores.csv'
 YOUTUBE_CSV_FILE = f'{TEXT_DIR}/scores_and_urls.csv'
 RAW_FILE = f'{TEXT_DIR}/raw.csv'
 ALREADY_WATCHED_FILE = f'{TEXT_DIR}/already_watched.txt'
-LAST_FETCHED_DOTA_FILE = f'{TEXT_DIR}/last_fetched_dota.txt'
 LAST_GOT_HIGHLIGHT_VIDEOS = f'{TEXT_DIR}/last_got_highlight_videos.txt'
+LAST_RUN_FILE = f'{TEXT_DIR}/last_run.json'
 HIGHLIGHT_VIDEOS = f'{TEXT_DIR}/highlight_videos.csv'
 SCORES_NO_HIGHLIGHTS = f'{TEXT_DIR}/scores_no_highlights.csv'
+TEAM_NAMES_FILE = f'{TEXT_DIR}/team_names.csv'
 DATE_STR_FORMAT = '%Y-%m-%d:%H:%M:%S'
 TEAMS_I_LIKE = ['lgd', 'boom esports',
                 'Team Spirit',
@@ -45,9 +46,17 @@ TEAMS_I_LIKE = ['lgd', 'boom esports',
                 'Quest'
                 'xtreme gaming',
                 'invictus',
-                'Team Spirit']
+                'Team Spirit',
+                'Natus Vincere'
+                'MOUZ',
+                'Virtus.pro',
+                'HEROIC',
+                'Team Falcons']
 # Just using highlights score, but just been watching whole games
-REDO_SCORES = False
+REDO_SCORES = os.getenv("REDO_SCORES", "False")
+if (REDO_SCORES != "True") and (REDO_SCORES != "False"):
+    raise ValueError("REDO_SCORES must be True or False")
+REDO_SCORES = REDO_SCORES == "True"  # convert to bool
 HIGHLIGHTS_SCORE_COLS = ['fight_%_of_game', 'interesting_score', 'days_ago_score', 'good_team_playing_score']
 WHOLE_GAME_SCORE_COLS = ['kills_per_min_score', 'swing_score', 'fight_%_of_game', 'days_ago_score',
                          'good_team_playing_score']
