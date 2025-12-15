@@ -11,3 +11,4 @@ df_to_recalculate = df_historic.merge(
     on="match_id",
     how="inner"
 )
+df_scored = get_and_score_func(df_to_recalculate)

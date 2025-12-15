@@ -62,8 +62,6 @@ def calculate_scores(df):
     # Add 0.1 to score if there's an aegis steal or deny
     df["aegis_steals_score"] = (df["CHAT_MESSAGE_AEGIS_STOLEN"] + df["CHAT_MESSAGE_DENIED_AEGIS"] > 0).astype(float)
 
-    # df['good_team_playing_score'] = 0
-    # df.loc[df["title"].str.contains('|'.join(TEAMS_I_LIKE, ), case=False), f'good_team_playing_score'] = 1
     # If 2 top tier teams are playing score=1
     # If 2 good teams are playing score=0.75
     # If 1 top tier is playing score=0.75
@@ -78,4 +76,8 @@ def calculate_scores(df):
         default=0.0
     )
     df["good_team_playing_score"] = df["good_team_playing_score"].round(2)
+    # manually override teams mmr and score highly if I simply like the teams
+    # from constants import TEAMS_I_LIKE
+    # TEAMS_I_LIKE = ['lgd', 'boom esports','Team Spirit']
+    # df.loc[df["title"].str.contains('|'.join(TEAMS_I_LIKE, ), case=False), f'good_team_playing_score'] = 1
     return df

@@ -6,7 +6,8 @@ import pandas as pd
 
 from constants import SCORES_CSV_FILE, ALREADY_WATCHED_FILE, SCORES_ALL_COLS_CSV_FILE, \
     FINAL_SCORE_COLS, \
-    HISTORIC_FILE, REDO_HISTORIC_SCORES, WHOLE_GAME_SCORE_COLS, LATEST_HISTORIC_FILE, SCORES_COLS
+    HISTORIC_FILE, REDO_HISTORIC_SCORES, WHOLE_GAME_SCORE_COLS, LATEST_HISTORIC_FILE, SCORES_COLS, \
+    SCORES_ALL_COLS_FOR_EXCEL_CSV_FILE
 from dota.calcs import calculate_all_game_statistics
 from dota.calculate_scores import calculate_scores
 
@@ -41,11 +42,12 @@ def clean_df_and_fill_nas(df):
     return df
 
 
-def get_and_score_func():
+def get_and_score_func(df=None):
     # https://overwolf.github.io/api/media/replays/auto-highlights
     # improvement - record the score metrics to a file, check if they have changed, if not, no need to recalculate
     #   also leave in the manual option to manually recalculate the scores
-    df = get_df_of_games_that_need_scored()
+    if df is None:
+        df = get_df_of_games_that_need_scored()
     if df.empty:
         return
     df = clean_df_and_fill_nas(df)
@@ -90,5 +92,6 @@ def get_and_score_func():
     df = df[first_columns + [c for c in df.columns if c not in first_columns]]
     df_scores = df[SCORES_COLS]
     df.to_csv(SCORES_ALL_COLS_CSV_FILE, header=True, index=False)
-    df_scores.to_csv(SCORES_CSV_FILE, header=True, index=False)
-    print(df_scores.head(50).to_string())
+    df.head(100).to_csv(SCORES_ALL_COLS_FOR_EXCEL_CSV_FILE, header=True, index=False)
+    df_scores.head(100).to_csv(SCORES_CSV_FILE, header=True, index=False)
+    return df
