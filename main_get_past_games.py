@@ -1,7 +1,7 @@
 import pandas as pd
 import requests
 
-from constants import LAST_RUN_FILE, RAW_FILE
+from constants import LAST_RUN_FILE, HISTORIC_FILE
 from dota.run_tracker import RunTracker
 
 run_tracker = RunTracker(LAST_RUN_FILE)
@@ -11,7 +11,7 @@ run_tracker = RunTracker(LAST_RUN_FILE)
 # Well...Could subtract the times from the previous times and find the largest time gap
 have_these_games_time = 1765736521
 
-df = pd.read_csv(RAW_FILE)
+df = pd.read_csv(HISTORIC_FILE)
 min_start_time = df[df['start_time'] > have_these_games_time]["start_time"].min()
 print(f"start time is {int(min_start_time)}")
 while min_start_time > have_these_games_time:
@@ -38,10 +38,10 @@ while min_start_time > have_these_games_time:
         continue
     matches = r.json()['rows']
     df_new = pd.DataFrame(matches)
-    df_raw = pd.read_csv(RAW_FILE)
+    df_raw = pd.read_csv(HISTORIC_FILE)
     df = pd.concat([df_new, df_raw])
     df = df.drop_duplicates('match_id')
-    df.to_csv(RAW_FILE, index=False, header=True)
+    df.to_csv(HISTORIC_FILE, index=False, header=True)
     min_start_time = df[df['start_time'] > 1721937466]["start_time"].min()
     print(f"start time is {int(min_start_time)}")
 print("finished")

@@ -7,12 +7,12 @@ import numpy as np
 import pandas as pd
 import requests
 
-from calcs import get_team_names_and_ranks, calc_time_ago, calc_game_num, create_title, add_total_objectives_cols, \
+from dota.calcs import get_team_names_and_ranks, calc_time_ago, calc_game_num, create_title, add_total_objectives_cols, \
     calc_teamfight_stats, calc_gold_adv_rate, calc_gold_adv_std, calc_min_in_lead, calc_max_gold_swing, \
     calc_gold_lead_is_small
 from constants import HIGHLIGHTS_SCORE_COLS, TEAMS_I_LIKE, WHOLE_GAME_SCORE_COLS
-from get_and_score_func import clean_df_and_fill_nas
-from score import linear_map
+from dota.get_and_score_func import clean_df_and_fill_nas
+from dota.score import linear_map
 
 logger = getLogger(__name__)
 # fetches data from opendota API and updates the raw file

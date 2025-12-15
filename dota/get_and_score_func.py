@@ -7,24 +7,24 @@ from logging import getLogger
 import numpy as np
 import pandas as pd
 
-from calcs import calc_teamfight_stats, calc_gold_adv_rate, calc_gold_adv_std, calc_min_in_lead, \
+from dota.calcs import calc_teamfight_stats, calc_gold_adv_rate, calc_gold_adv_std, calc_min_in_lead, \
     calc_max_gold_swing, calc_gold_lead_is_small, get_team_names_and_ranks, calc_time_ago, create_title, calc_game_num, \
     add_total_objectives_cols
 from constants import SCORES_CSV_FILE, ALREADY_WATCHED_FILE, SCORES_ALL_COLS_CSV_FILE, \
     HIGHLIGHTS_SCORE_COLS, \
-    RAW_FILE, TEAMS_I_LIKE, REDO_HISTORIC_SCORES, WHOLE_GAME_SCORE_COLS, LATEST_RAW_FILE
-from score import linear_map
+    HISTORIC_FILE, TEAMS_I_LIKE, REDO_HISTORIC_SCORES, WHOLE_GAME_SCORE_COLS, LATEST_HISTORIC_FILE
+from dota.score import linear_map
 
 logger = getLogger(__name__)
 
 
 def get_df_of_games_that_need_scored():
     if REDO_HISTORIC_SCORES:
-        df_raw = pd.read_csv(RAW_FILE)
+        df_raw = pd.read_csv(HISTORIC_FILE)
         logger.info("recalculating all scores")
         df = df_raw
     else:
-        df_raw = pd.read_csv(LATEST_RAW_FILE)
+        df_raw = pd.read_csv(LATEST_HISTORIC_FILE)
         logger.info("only calculating scores for new games")
         df_scored = pd.read_csv(SCORES_ALL_COLS_CSV_FILE)
         df = df_raw[~df_raw["match_id"].isin(df_scored["match_id"])]

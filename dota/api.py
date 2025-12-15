@@ -3,7 +3,7 @@ from logging import getLogger
 import pandas as pd
 import requests
 
-from constants import TEAM_NAMES_FILE, RAW_FILE, LATEST_RAW_FILE
+from constants import TEAM_NAMES_FILE, HISTORIC_FILE, LATEST_HISTORIC_FILE
 
 logger = getLogger(__name__)
 
@@ -33,19 +33,40 @@ DEFAULT_QUERY = f"""SELECT *
 
 
 def fetch_dota_data_from_api(sql_query=DEFAULT_QUERY):
-    # fetches data from opendota API and updates the raw file
-    update_data = True
-    if update_data:
-        pass
+    # fetches data from opendota API and update the rolling 6 month file
     url = f"""https://api.opendota.com/api/explorer?sql={sql_query}"""
     r = requests.get(url, timeout=45)
     if r.status_code != 200:
-        print(r.text)
+        logger.error(r.text)
     matches = r.json()['rows']
     df_new = pd.DataFrame(matches)
-    df_raw = pd.read_csv(RAW_FILE)
+    df_raw = pd.read_csv(LATEST_HISTORIC_FILE)
     df = pd.concat([df_new, df_raw])
     df = df.drop_duplicates('match_id')
-    df.to_csv(RAW_FILE, index=False, header=True)
-    df2 = df[df['start_time'] >= (pd.Timestamp.now() - pd.DateOffset(months=6)).timestamp()]
-    df2.to_csv(LATEST_RAW_FILE, index=False, header=True)
+    df = df[df['start_time'] >= (pd.Timestamp.now() - pd.DateOffset(months=6)).timestamp()]
+    df.to_csv(LATEST_HISTORIC_FILE, index=False, header=True)
+
+
+def update_historic_file():
+    df_raw = pd.read_csv(HISTORIC_FILE)
+    latest_timestamp = df_raw["start_time"].max()
+    sql_query = f"""SELECT * 
+    FROM matches
+    JOIN leagues using(leagueid)
+    WHERE name not like '%Division II%'
+    AND leagues.TIER in ('professional','premium')
+    AND matches.start_time > {latest_timestamp} 
+    ORDER BY matches.start_time DESC
+    LIMIT 4000"""
+    url = f"""https://api.opendota.com/api/explorer?sql={sql_query}"""
+    r = requests.get(url, timeout=45)
+    if r.status_code != 200:
+        logger.error(r.text)
+    matches = r.json()['rows']
+    if not matches:
+        logger.info("no new matches found, not updating historic file")
+        return
+    df_new = pd.DataFrame(matches)
+    df = pd.concat([df_new, df_raw])
+    df = df.drop_duplicates('match_id')
+    df.to_csv(HISTORIC_FILE, index=False, header=True)
