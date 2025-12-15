@@ -18,7 +18,7 @@ def create_highlights_df(df, cols):
     cols2 = print_cols
     cols2.extend(cols)
     cols2 = list(set(cols2))
-    df = df.sort_values('highlights_score', ascending=False)
+    df = df.sort_values('final_score', ascending=False)
     df = df.set_index('match_id')
     return df[cols2]
 
@@ -27,7 +27,7 @@ def print_highlights_df(df, cols, rows=10):
     logger.info()
     cols2 = print_cols
     cols2.extend(cols)
-    df = df.sort_values('highlights_score', ascending=False)
+    df = df.sort_values('final_score', ascending=False)
     df = df.set_index('match_id')
     logger.info('highlights df')
     logger.info(df[cols2].head(rows).to_string())

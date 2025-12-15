@@ -57,6 +57,8 @@ class RunTracker:
         will_run = delta_hours > run_every_x_hours
         if will_run:
             status = 'running'
+            self.last_ran_dict[key] = datetime.now()
+            self.update_file()
         else:
             status = 'skipping'
         logger.info(f'last ran {delta_hours} hours ago, {status} {key}')

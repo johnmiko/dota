@@ -1,5 +1,5 @@
 import ast
-import statistics
+import json
 from collections import Counter
 from datetime import datetime
 from logging import getLogger
@@ -8,29 +8,13 @@ import numpy as np
 import pandas as pd
 
 from constants import TEAM_NAMES_FILE
+from dota.score import linear_map
 
 logger = getLogger(__name__)
 
 
-def calc_gold_adv_rate(df, i, radiant_gold_adv):
-    # radiant_gold_adv = ast.literal_eval(radiant_gold_adv_str)
-    if not radiant_gold_adv:
-        df.loc[i, 'gold_adv_rate'] = np.nan
-    else:
-        df.loc[i, 'gold_adv_rate'] = round(abs(radiant_gold_adv[-1]) / df.loc[i, 'duration'], 2)
-    return df
-
-
-# Not really useful this guy
-def calc_gold_adv_std(df, i, radiant_gold_adv):
-    if not radiant_gold_adv:
-        df.loc[i, 'radiant_gold_adv_std'] = 0
-    else:
-        df.loc[i, 'radiant_gold_adv_std'] = statistics.stdev(radiant_gold_adv)
-    return df
-
-
 def calc_min_in_lead(df, i, radiant_gold_adv):
+    # Find the number of minutes the team was in the lead before they won
     if not radiant_gold_adv:
         df.loc[i, 'min_in_lead'] = 0
         return df
@@ -57,9 +41,12 @@ def calc_min_in_lead(df, i, radiant_gold_adv):
 
 def calc_max_gold_swing(df, i, radiant_gold_adv):
     # want to find the largest change in values from max value to any value after that
+    # We choose a 10-minute window because it's not interesting if a team is up then another team slowly gets the lead after?
+    # improvement - also check the swing over the entire game, see what that gives
     max_swing = 0
-    for j in range(10, len(radiant_gold_adv) - 1):
-        # Find max net worth change that has occured in the past 10 minutes
+    skip_first_x_minutes = 10
+    for j in range(skip_first_x_minutes, len(radiant_gold_adv) - 1):
+        # Find max net worth change that has occurred in the past 10 minutes
         # Set value to 11 instead of 10 because of indexing
         max_window = 11
         indices_left = len(radiant_gold_adv[j + 1:]) + 1
@@ -113,6 +100,7 @@ def calc_teamfight_stats(df, i):
         if fight['start'] < first_fight_at_in_secs:
             first_fight_at_in_secs = fight['start']
     # df['first_fight_at'] = df['first_fight_at'].astype('string')
+    # Only count since the first fight time because that's the time I will start watching
     df.loc[i, 'first_fight_at'] = str(str(first_fight_at_in_secs // 60) + ':' + str(first_fight_at_in_secs % 60))
     df.loc[i, 'fight_%_of_game'] = secs_of_fighting / (df.loc[i, 'duration'] - first_fight_at_in_secs)
     return df
@@ -168,10 +156,13 @@ def get_team_names_and_ranks(df, df_teams=None):
     df_teams["rank"] = df_teams.index + 1
     df = df.merge(df_teams[['team_id', 'name', 'rank']], how='left', left_on='radiant_team_id', right_on='team_id')
     df = df.merge(df_teams[['team_id', 'name', 'rank']], how='left', left_on='dire_team_id', right_on='team_id')
+    # df = df.rename(columns={"name_x": "radiant_team_name", "rank_x": "radiant_team_rank", "name_y": "dire_team_name",
+    #                         "rank_y": "dire_team_rank"})
+    df = df.rename(columns={"rank_x": "radiant_team_rank",
+                            "rank_y": "dire_team_rank"})
     df['radiant_team_name'] = df['name_x']
-    df["radiant_team_rank"] = df["rank_x"]
     df['dire_team_name'] = df['name_y']
-    df["dire_team_rank"] = df["rank_y"]
+    df = df.drop(columns=['name_x', 'name_y', 'team_id_x', 'team_id_y'])
     return df
 
 
@@ -215,4 +206,51 @@ def add_total_objectives_cols(df, i):
         # TODO: Not checking if a new objective exists, want to know if the data has changed
         for k, v in totals.items():
             df.loc[i, k] = v
+    return df
+
+
+def calculate_all_game_statistics(df):
+    df['total_kills'] = df['radiant_score'] + df['dire_score']
+    df['duration_min'] = (df['duration'] / 60).round()
+    df['kills_per_min'] = df['total_kills'] / df['duration_min']
+    df['kills_per_min'] = df['kills_per_min'].round(2)
+    df = df.rename(columns={"name": "tournament"})
+    df = get_team_names_and_ranks(df)
+    df = calc_time_ago(df)
+    df = calc_game_num(df)
+    df = create_title(df)
+    df['days_ago'] = (df['date'] - datetime.now()).dt.days
+    df = linear_map(df, 'days_ago', f'days_ago_score', -100, 0, 0, 1)
+    df[['swing', 'fight_%_of_game', 'lead_is_small']] = None
+
+    for i, row in df.iterrows():
+        # radiant_gold_adv = df.loc[i, 'radiant_gold_adv']
+        teamfights = df.loc[i, 'teamfights']
+        df = add_total_objectives_cols(df, i)
+        if teamfights is None:
+            df.loc[i, 'first_fight_at'] = 10000
+            df.loc[i, 'fight_%_of_game'] = 0
+        else:
+            df = calc_teamfight_stats(df, i)
+        radiant_gold_adv = df.loc[i, 'radiant_gold_adv']
+        # if np.na or (None or [])
+        if (type(radiant_gold_adv) != list and pd.isna(radiant_gold_adv)) or (not radiant_gold_adv):
+            df.loc[i, 'min_in_lead'] = 100
+            df.loc[i, 'swing'] = 0
+            df.loc[i, 'lead_is_small'] = 0
+
+        else:
+            radiant_gold_adv = df.loc[i, 'radiant_gold_adv']
+            if type(radiant_gold_adv) == str:
+                try:
+                    radiant_gold_adv = ast.literal_eval(df.loc[i, 'radiant_gold_adv'])
+                except:
+                    radiant_gold_adv = json.loads(df.loc[i, 'radiant_gold_adv'])
+            df = calc_min_in_lead(df, i, radiant_gold_adv)
+            df = calc_max_gold_swing(df, i, radiant_gold_adv)
+            df = calc_gold_lead_is_small(df, i, radiant_gold_adv)
+    df['swing'] = df['swing'].astype(int)
+    df['lead_is_small'] = df['lead_is_small'].astype(float).round(2)
+    df['min_in_lead'] = df['min_in_lead'].astype(int).round(2)
+    df['fight_%_of_game'] = df['fight_%_of_game'].astype(float).round(2)
     return df

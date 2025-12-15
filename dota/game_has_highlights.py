@@ -62,6 +62,6 @@ def find_games_without_highlights():
     ##### chat attempt #####
     df_no_highlights = df_scores[df_scores['has_highlights'] == False]
     # df_no_highlights['url'] = 'https://www.youtube.com/watch?v=' + df_scores['video_id']
-    df_no_highlights = df_no_highlights[['match_id', 'title', 'time_ago', 'highlights_score', 'watched']]
+    df_no_highlights = df_no_highlights[['match_id', 'title', 'time_ago', 'final_score', 'watched']]
     df_no_highlights.to_csv(SCORES_NO_HIGHLIGHTS, index=False)
     return df_no_highlights
