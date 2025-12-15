@@ -3,10 +3,11 @@ from datetime import datetime
 from logging import getLogger
 
 import pandas as pd
+
+pd.options.display.width = 0
 from pandas.errors import EmptyDataError
 
 from constants import DATE_STR_FORMAT, ALREADY_WATCHED_FILE, LAST_RUN_FILE
-from ease_of_use import pdf
 
 logger = getLogger(__name__)
 
@@ -23,14 +24,14 @@ def create_highlights_df(df, cols):
 
 
 def print_highlights_df(df, cols, rows=10):
-    print()
+    logger.info()
     cols2 = print_cols
     cols2.extend(cols)
     df = df.sort_values('highlights_score', ascending=False)
     df = df.set_index('match_id')
-    print('highlights df')
-    pdf(df[cols2].head(rows))
-    print()
+    logger.info('highlights df')
+    logger.info(df[cols2].head(rows).to_string())
+    logger.info()
 
 
 def create_wholegame_df(df, cols, rows=10):
@@ -43,14 +44,14 @@ def create_wholegame_df(df, cols, rows=10):
 
 
 def print_whole_game_df(df, cols, rows=5):
-    print()
+    logger.info()
     cols2 = print_cols
     cols2.extend(cols)
-    print('whole game df')
+    logger.info('whole game df')
     df = df.sort_values('whole_game_score', ascending=False)
     df = df.set_index('match_id')
-    pdf(df[cols2].head(rows))
-    print()
+    logger.info(df[cols2].head(rows).to_string())
+    logger.info()
 
 
 def create_empty_file(filename):
@@ -74,21 +75,6 @@ def last_ran(filename):
     with open(filename, 'w') as f:
         f.write(datetime.now().strftime(DATE_STR_FORMAT))
     return last_ran_date
-
-
-# def should_run_based_on_file(last_ran_file, run_every_x_hours):
-#     last_ran_date = last_ran(last_ran_file)
-#     utc_now = datetime.utcnow()
-#     delta = utc_now - last_ran_date
-#     delta_seconds = delta.days * 3600 * 24 + delta.seconds
-#     delta_hours = round(delta_seconds / 3600, 1)
-#     should_run = delta_hours > run_every_x_hours
-#     if should_run:
-#         status = 'running'
-#     else:
-#         status = 'skipping'
-#     logger.info(f'last ran {delta_hours} hours ago, {status} {last_ran_file}')
-#     return should_run
 
 
 def should_run(last_ran_dict, key, run_every_x_hours):

@@ -205,7 +205,7 @@ def calc_gold_lead_is_small(df, i, radiant_gold_adv):
 
 def add_total_objectives_cols(df, i):
     row = df.loc[i]
-    if type(row["objectives"]) != list:
+    if type(row["objectives"]) == str:
         objectives = ast.literal_eval(row["objectives"])
     else:
         objectives = row["objectives"]

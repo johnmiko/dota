@@ -16,7 +16,7 @@ def get_team_names_and_ranks_from_api():
     r = requests.get(teams_url)
     teams_raw = r.json()
     df_teams = pd.DataFrame(teams_raw)
-    df_teams = df_teams.sort_values(by='rank', ascending=False)
+    df_teams = df_teams.sort_values(by='rating', ascending=False)
     # match_id seems to be null for teams that do not exist anymore (example optic gaming)
     df_teams = df_teams[~df_teams["match_id"].isna()]
     # maybe better to write just the json data to file, not sure
