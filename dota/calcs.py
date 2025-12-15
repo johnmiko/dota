@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 
 from constants import TEAM_NAMES_FILE
-from dota.score import linear_map
 
 logger = getLogger(__name__)
 
@@ -91,6 +90,7 @@ def calc_teamfight_stats(df, i):
     if (type(teamfights) != list) and pd.isna(teamfights):
         df.loc[i, 'first_fight_at'] = "30"
         df.loc[i, 'fight_%_of_game'] = "0"
+        df.loc[i, 'avg_fight_length'] = "0"
         return df
     # num_teamfights = len(teamfights)
     secs_of_fighting = 0
@@ -103,6 +103,8 @@ def calc_teamfight_stats(df, i):
     # Only count since the first fight time because that's the time I will start watching
     df.loc[i, 'first_fight_at'] = str(str(first_fight_at_in_secs // 60) + ':' + str(first_fight_at_in_secs % 60))
     df.loc[i, 'fight_%_of_game'] = secs_of_fighting / (df.loc[i, 'duration'] - first_fight_at_in_secs)
+    num_teamfights = len(teamfights) if len(teamfights) > 0 else 1
+    df.loc[i, 'avg_fight_length'] = secs_of_fighting / num_teamfights
     return df
 
 
@@ -212,16 +214,13 @@ def add_total_objectives_cols(df, i):
 def calculate_all_game_statistics(df):
     df['total_kills'] = df['radiant_score'] + df['dire_score']
     df['duration_min'] = (df['duration'] / 60).round()
-    df['kills_per_min'] = df['total_kills'] / df['duration_min']
-    df['kills_per_min'] = df['kills_per_min'].round(2)
     df = df.rename(columns={"name": "tournament"})
     df = get_team_names_and_ranks(df)
     df = calc_time_ago(df)
     df = calc_game_num(df)
     df = create_title(df)
     df['days_ago'] = (df['date'] - datetime.now()).dt.days
-    df = linear_map(df, 'days_ago', f'days_ago_score', -100, 0, 0, 1)
-    df[['swing', 'fight_%_of_game', 'lead_is_small']] = None
+    df[['swing', 'fight_%_of_game', 'lead_is_small', 'avg_fight_length']] = None
 
     for i, row in df.iterrows():
         # radiant_gold_adv = df.loc[i, 'radiant_gold_adv']
@@ -230,6 +229,7 @@ def calculate_all_game_statistics(df):
         if teamfights is None:
             df.loc[i, 'first_fight_at'] = 10000
             df.loc[i, 'fight_%_of_game'] = 0
+            df.loc[i, 'avg_fight_length'] = 0
         else:
             df = calc_teamfight_stats(df, i)
         radiant_gold_adv = df.loc[i, 'radiant_gold_adv']
@@ -253,4 +253,5 @@ def calculate_all_game_statistics(df):
     df['lead_is_small'] = df['lead_is_small'].astype(float).round(2)
     df['min_in_lead'] = df['min_in_lead'].astype(int).round(2)
     df['fight_%_of_game'] = df['fight_%_of_game'].astype(float).round(2)
+    df['avg_fight_length'] = df['avg_fight_length'].astype(float).round(2)
     return df

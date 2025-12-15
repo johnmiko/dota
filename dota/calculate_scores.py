@@ -4,6 +4,9 @@ from dota.score import linear_map
 
 
 def calculate_scores(df):
+    col = 'days_ago'
+    df = linear_map(df, 'col', f'{col}_score', -100, 0, 0, 1)
+
     col = 'fight_%_of_game'
     df[col] = df[col].astype(float)
     df = linear_map(df, col, f'{col}_score', 0.05, 0.25, 0, 1)
@@ -24,12 +27,6 @@ def calculate_scores(df):
     df = linear_map(df, col, f'{col}_score', 45, 65, 0, 1)
     df.loc[df[col] < 45, f'{col}_score'] = 0
     df.loc[df[col] > 65, f'{col}_score'] = 1
-    df[f'{col}_score'] = df[f'{col}_score'].round(2)
-
-    col = 'kills_per_min'
-    df = linear_map(df, col, f'{col}_score', 0.5, 2, 0, 1)
-    df.loc[df[col] < 0.5, f'{col}_score'] = 0
-    df.loc[df[col] > 2, f'{col}_score'] = 1
     df[f'{col}_score'] = df[f'{col}_score'].round(2)
 
     col = 'lead_is_small'

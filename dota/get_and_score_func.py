@@ -20,10 +20,8 @@ def get_df_of_games_that_need_scored():
         logger.info("recalculating all historic scores")
         df = df_raw
     else:
-        df_raw = pd.read_csv(LATEST_HISTORIC_FILE)
+        df = pd.read_csv(LATEST_HISTORIC_FILE)
         logger.info("calculating scores for games in past 6 months")
-        df_scored = pd.read_csv(SCORES_ALL_COLS_CSV_FILE)
-        df = df_raw[~df_raw["match_id"].isin(df_scored["match_id"])]
     return df
 
 

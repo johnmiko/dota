@@ -31,11 +31,11 @@ if (redo_historic_scores != "True") and (redo_historic_scores != "False"):
     raise ValueError("REDO_HISTORIC_SCORES must be True or False")
 REDO_HISTORIC_SCORES = redo_historic_scores == "True"  # convert to bool
 FINAL_SCORE_COLS = ['interesting_score', 'days_ago_score', 'good_team_playing_score', 'aegis_steals_score']
-WHOLE_GAME_SCORE_COLS = ['kills_per_min_score', 'swing_score', 'fight_%_of_game_score', 'days_ago_score',
+WHOLE_GAME_SCORE_COLS = ['swing_score', 'fight_%_of_game_score', 'days_ago_score',
                          'good_team_playing_score']
 SCORES_COLS = ['match_id', 'title', 'time_ago', 'final_score', 'first_fight_at', 'tournament']
 # to do, not implemented
-# SERIES_SCORE_COLS = ['kills_per_min_score', 'swing_score', 'fight_%_of_game_score', 'days_ago_score',
+# SERIES_SCORE_COLS = ['swing_score', 'fight_%_of_game_score', 'days_ago_score',
 #                          'good_team_playing_score']
 
 TEAM_ABBR = {'betboom': 'bb',
