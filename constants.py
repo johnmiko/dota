@@ -11,19 +11,19 @@ GLOBAL_LOG_LEVEL = logging.INFO
 PROJ_DIR = os.path.dirname(os.path.abspath(Path(__file__)))
 DOTA_DIR = PROJ_DIR + '/'
 TEXT_DIR = os.getenv("TEXT_DIR", "C:/Users/johnm/OneDrive/miscellaneous/ccode_files/dota/text")
-
-SCORES_ALL_COLS_FOR_EXCEL_CSV_FILE = f'{TEXT_DIR}/scores_all_cols_for_excel.csv'
-SCORES_ALL_COLS_CSV_FILE = f'{TEXT_DIR}/scores_all_cols.csv'
-SCORES_CSV_FILE = f'{TEXT_DIR}/scores.csv'
+LOCAL_TEX_DIR = f"{PROJ_DIR}/text/"
+SCORES_ALL_COLS_FOR_EXCEL_CSV_FILE = f'{LOCAL_TEX_DIR}/scores_all_cols_for_excel.csv'
+SCORES_ALL_COLS_CSV_FILE = f'{LOCAL_TEX_DIR}/scores_all_cols.csv'
+SCORES_CSV_FILE = f'{LOCAL_TEX_DIR}/scores.csv'
 YOUTUBE_CSV_FILE = f'{TEXT_DIR}/scores_and_urls.csv'
 HISTORIC_FILE = f'{TEXT_DIR}/historic.csv'
-LATEST_HISTORIC_FILE = f'{TEXT_DIR}/last_6_months.csv'
+LATEST_HISTORIC_FILE = f'{LOCAL_TEX_DIR}/last_6_months.csv'
 ALREADY_WATCHED_FILE = f'{TEXT_DIR}/already_watched.txt'
-LAST_GOT_HIGHLIGHT_VIDEOS = f'{TEXT_DIR}/last_got_highlight_videos.txt'
-LAST_RUN_FILE = f'{TEXT_DIR}/last_run.json'
+LAST_GOT_HIGHLIGHT_VIDEOS = f'{LOCAL_TEX_DIR}/last_got_highlight_videos.txt'
+LAST_RUN_FILE = f'{LOCAL_TEX_DIR}/last_run.json'
 HIGHLIGHT_VIDEOS = f'{TEXT_DIR}/highlight_videos.csv'
 SCORES_NO_HIGHLIGHTS = f'{TEXT_DIR}/scores_no_highlights.csv'
-TEAM_NAMES_FILE = f'{TEXT_DIR}/team_names.csv'
+TEAM_NAMES_FILE = f'{LOCAL_TEX_DIR}/team_names.csv'
 DATE_STR_FORMAT = '%Y-%m-%d:%H:%M:%S'
 # Just using highlights score, but just been watching whole games
 redo_historic_scores = os.getenv("REDO_HISTORIC_SCORES", "False")

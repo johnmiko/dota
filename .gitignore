@@ -4,3 +4,5 @@
 __pycache__
 /TO DO.txt
 /scrap.py
+*.pyc
+/text/
