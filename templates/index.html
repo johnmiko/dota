@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dota 2 Matches</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dota 2 Matches</h1>
+    <button id="recalculateBtn">Recalculate Scores</button>
+    <div id="matches"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchMatches();
+            
+            document.getElementById('recalculateBtn').addEventListener('click', function() {
+                fetch('/api/recalculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('Recalculation started. Refreshing matches...');
+                        fetchMatches();
+                    } else {
+                        alert('Error: ' + (data.error || 'Unknown error occurred'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error triggering recalculation');
+                });
+            });
+        });
+
+        function fetchMatches() {
+            fetch('/api/matches')
+                .then(response => response.json())
+                .then(matches => {
+                    const matchesDiv = document.getElementById('matches');
+                    if (matches.error) {
+                        matchesDiv.innerHTML = `<p>Error: ${matches.error}</p>`;
+                        return;
+                    }
+                    
+                    if (matches.length === 0) {
+                        matchesDiv.innerHTML = '<p>No matches found.</p>';
+                        return;
+                    }
+
+                    const table = document.createElement('table');
+                    
+                    // Create table header
+                    const thead = document.createElement('thead');
+                    const headerRow = document.createElement('tr');
+                    Object.keys(matches[0]).forEach(key => {
+                        const th = document.createElement('th');
+                        th.textContent = key;
+                        headerRow.appendChild(th);
+                    });
+                    thead.appendChild(headerRow);
+                    table.appendChild(thead);
+                    
+                    // Create table body
+                    const tbody = document.createElement('tbody');
+                    matches.forEach(match => {
+                        const row = document.createElement('tr');
+                        Object.values(match).forEach(value => {
+                            const td = document.createElement('td');
+                            td.textContent = value !== null ? value : '';
+                            row.appendChild(td);
+                        });
+                        tbody.appendChild(row);
+                    });
+                    
+                    table.appendChild(tbody);
+                    
+                    // Clear and update the matches div
+                    matchesDiv.innerHTML = '';
+                    matchesDiv.appendChild(table);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('matches').innerHTML = 'Error loading matches. Check console for details.';
+                });
+        }
+    </script>
+</body>
+</html>

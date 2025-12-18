@@ -43,7 +43,7 @@ def fetch_dota_data_from_api(sql_query=DEFAULT_QUERY):
     df_raw = pd.read_csv(LATEST_HISTORIC_FILE)
     df = pd.concat([df_new, df_raw])
     df = df.drop_duplicates('match_id')
-    df = df[df['start_time'] >= (pd.Timestamp.now() - pd.DateOffset(months=6)).timestamp()]
+    df = df[df['start_time'] >= (pd.Timestamp.now() - pd.DateOffset(months=4)).timestamp()]
     df.to_csv(LATEST_HISTORIC_FILE, index=False, header=True)
 
 

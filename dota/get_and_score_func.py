@@ -58,7 +58,7 @@ def get_and_score_func(df=None):
     df = calculate_scores(df)
     # Game is interesting if it is over 63 minutes, it is close, there is a comeback
     # Do OR operation of these
-    df['interesting_score'] = df[['lead_is_small_score', 'min_in_lead_score', 'duration_min_score', 'swing_score',
+    df['interesting_score'] = df[['lead_is_small_score', 'min_in_lead_score', 'swing_score',
                                   'barracks_comeback_score']].max(axis=1)
     # increase weight of interestingness score
     weights = {c: 1 for c in FINAL_SCORE_COLS}

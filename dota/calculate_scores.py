@@ -1,11 +1,12 @@
 import numpy as np
 
+from constants import TEAMS_I_LIKE
 from dota.score import linear_map
 
 
 def calculate_scores(df):
     col = 'days_ago'
-    df = linear_map(df, 'col', f'{col}_score', -100, 0, 0, 1)
+    df = linear_map(df, col, f'{col}_score', -100, 0, 0, 1)
 
     col = 'fight_%_of_game'
     df[col] = df[col].astype(float)
@@ -24,7 +25,7 @@ def calculate_scores(df):
     df[f'{col}_score'] = df[f'{col}_score'].round(2)
 
     col = 'duration_min'
-    df = linear_map(df, col, f'{col}_score', 45, 65, 0, 1)
+    df = linear_map(df, col, f'{col}_score', 45, 65, 0, 0.9)
     df.loc[df[col] < 45, f'{col}_score'] = 0
     df.loc[df[col] > 65, f'{col}_score'] = 1
     df[f'{col}_score'] = df[f'{col}_score'].round(2)
@@ -75,6 +76,6 @@ def calculate_scores(df):
     df["good_team_playing_score"] = df["good_team_playing_score"].round(2)
     # manually override teams mmr and score highly if I simply like the teams
     # from constants import TEAMS_I_LIKE
-    # TEAMS_I_LIKE = ['lgd', 'boom esports','Team Spirit']
-    # df.loc[df["title"].str.contains('|'.join(TEAMS_I_LIKE, ), case=False), f'good_team_playing_score'] = 1
+
+    df.loc[df["title"].str.contains('|'.join(TEAMS_I_LIKE, ), case=False), f'good_team_playing_score'] = 1
     return df

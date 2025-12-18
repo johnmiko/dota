@@ -12,3 +12,4 @@ scipy
 #google-auth-oauthlib
 python_dotenv~=1.2
 requests~=2.32
+flask~=3.1
