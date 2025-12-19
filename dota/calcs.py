@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from constants_old import TEAM_NAMES_FILE
+from dota.api import get_team_names_and_ranks_from_api
 
 logger = getLogger(__name__)
 
@@ -154,7 +155,7 @@ def calc_time_ago(df):
 
 def get_team_names_and_ranks(df, df_teams=None):
     if df_teams is None:
-        df_teams = pd.read_csv(TEAM_NAMES_FILE)
+        df_teams = get_team_names_and_ranks_from_api()
     df_teams["rank"] = df_teams.index + 1
     df = df.merge(df_teams[['team_id', 'name', 'rank']], how='left', left_on='radiant_team_id', right_on='team_id')
     df = df.merge(df_teams[['team_id', 'name', 'rank']], how='left', left_on='dire_team_id', right_on='team_id')
