@@ -22,5 +22,9 @@ SCORES_COLS = [
     'time_ago', 
     'final_score', 
     'first_fight_at', 
-    'tournament'
+    'tournament',
+    # Extra fields included in API output for UI display
+    'radiant_team_name',
+    'dire_team_name',
+    'duration_min'
 ]
