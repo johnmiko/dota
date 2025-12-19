@@ -22,7 +22,7 @@ app = FastAPI(title="Dota Game Finder API")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend URL
+    allow_origins=["https://portfoliovercel-lime.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
