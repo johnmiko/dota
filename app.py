@@ -1,21 +1,23 @@
-from typing import List, Dict, Any
 import os
-import requests
+from typing import List, Dict, Any
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from constants import SCORES_COLS, FINAL_SCORE_COLS, WHOLE_GAME_SCORE_COLS
+from database import SessionLocal, MatchRating, init_db, get_db, engine
+from dota.api import fetch_dota_data_from_api
 from dota.get_and_score_func import clean_df_and_fill_nas, calculate_all_game_statistics, calculate_scores
 
-PLAYER_ID = os.getenv("PLAYER_ID", "123456789")  # Set your OpenDota player ID here
+# Initialize database tables
+init_db()
 
 app = FastAPI(title="Dota Game Finder API")
-
-ratings = {}  # In-memory storage for user ratings; won't persist across restarts
 
 # Add CORS middleware
 app.add_middleware(
@@ -32,6 +34,7 @@ class RateMatchRequest(BaseModel):
     title: str = ""
     score: int
 
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     # For now, return a simple HTML response since templates might not be set up
@@ -40,24 +43,33 @@ async def index():
         <head><title>Dota Game Finder</title></head>
         <body>
             <h1>Dota Game Finder API</h1>
-            <p>API endpoints available at /api/matches, /api/recalculate, /api/rate_match</p>
+            <p>API endpoints available at /api/matches, /api/recalculate, /api/rate_match, /api/health</p>
         </body>
     </html>
     """
 
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint to verify the API and database are running."""
+    try:
+        # Test database connection
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    return {
+        "status": "healthy",
+        "database": db_status
+    }
+
+
 @app.get("/api/matches")
 async def get_matches() -> List[Dict[str, Any]]:
     try:
-        # Fetch recent matches from OpenDota API
-        response = requests.get(f"https://api.opendota.com/api/players/{PLAYER_ID}/matches?limit=100")
-        response.raise_for_status()
-        matches_data = response.json()
-
-        if not matches_data:
-            return []
-
-        # Convert to DataFrame
-        df = pd.DataFrame(matches_data)
+        df = fetch_dota_data_from_api()
 
         # Clean and fill NAs
         df = clean_df_and_fill_nas(df)
@@ -88,9 +100,14 @@ async def get_matches() -> List[Dict[str, Any]]:
                 df[['final_score']] / 2
         df = df.sort_values('final_score', ascending=False)
 
-        # Add user ratings if available
-        df['user_score'] = df['match_id'].map(lambda mid: ratings.get(str(mid), {}).get('score', None))
-        df['user_title'] = df['match_id'].map(lambda mid: ratings.get(str(mid), {}).get('title', ''))
+        # Add user ratings from database
+        db = SessionLocal()
+        try:
+            rated_matches = {str(r.match_id): r for r in db.query(MatchRating).all()}
+            df['user_score'] = df['match_id'].map(lambda mid: getattr(rated_matches.get(str(mid)), 'score', None))
+            df['user_title'] = df['match_id'].map(lambda mid: getattr(rated_matches.get(str(mid)), 'title', ''))
+        finally:
+            db.close()
 
         # Select columns
         df_scores = df[SCORES_COLS + ['user_score', 'user_title']]
@@ -101,26 +118,43 @@ async def get_matches() -> List[Dict[str, Any]]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/recalculate")
 async def recalculate():
     # This endpoint is kept for backward compatibility but does nothing
     # since we fetch fresh data on each request to /api/matches
     return {"status": "success"}
 
+
 @app.post("/api/rate_match")
-async def rate_match(request: RateMatchRequest):
+async def rate_match(request: RateMatchRequest, db: Session = Depends(get_db)):
     try:
         match_id = str(request.match_id)
-        title = request.title
-        score = request.score
 
-        # Store in in-memory dict
-        ratings[match_id] = {'title': title, 'score': score}
+        # Check if rating exists
+        rating = db.query(MatchRating).filter(MatchRating.match_id == match_id).first()
 
+        if rating:
+            # Update existing rating
+            rating.title = request.title
+            rating.score = request.score
+        else:
+            # Create new rating
+            rating = MatchRating(
+                match_id=match_id,
+                title=request.title,
+                score=request.score
+            )
+            db.add(rating)
+
+        db.commit()
         return {"status": "success"}
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -3,7 +3,7 @@ from logging import getLogger
 import pandas as pd
 import requests
 
-from constants import TEAM_NAMES_FILE, HISTORIC_FILE, LATEST_HISTORIC_FILE
+from constants_old import TEAM_NAMES_FILE, HISTORIC_FILE, LATEST_HISTORIC_FILE
 
 logger = getLogger(__name__)
 
@@ -19,7 +19,11 @@ def get_team_names_and_ranks_from_api():
     df_teams = df_teams.sort_values(by='rating', ascending=False)
     # match_id seems to be null for teams that do not exist anymore (example optic gaming)
     df_teams = df_teams[~df_teams["match_id"].isna()]
-    # maybe better to write just the json data to file, not sure
+    return df_teams
+
+
+def get_team_names_and_ranks_from_api_and_save_locally():
+    df_teams = get_team_names_and_ranks_from_api()
     df_teams.to_csv(TEAM_NAMES_FILE, index=False, header=True)
 
 
@@ -39,7 +43,13 @@ def fetch_dota_data_from_api(sql_query=DEFAULT_QUERY):
     if r.status_code != 200:
         logger.error(r.text)
     matches = r.json()['rows']
-    df_new = pd.DataFrame(matches)
+    df = pd.DataFrame(matches)
+    return df
+
+
+def fetch_dota_data_from_api_and_save_locally(sql_query=DEFAULT_QUERY):
+    # fetches data from opendota API and update the rolling 6 month file
+    df_new = fetch_dota_data_from_api(sql_query)
     df_raw = pd.read_csv(LATEST_HISTORIC_FILE)
     df = pd.concat([df_new, df_raw])
     df = df.drop_duplicates('match_id')

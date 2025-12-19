@@ -7,7 +7,7 @@ from logging import getLogger
 import numpy as np
 import pandas as pd
 
-from constants import TEAM_NAMES_FILE
+from constants_old import TEAM_NAMES_FILE
 
 logger = getLogger(__name__)
 

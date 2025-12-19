@@ -3,7 +3,6 @@ pandas
 fastapi
 scipy
 #moviepy
-#sqlalchemy
 #pymysql
 #django
 #google-api-python-client
@@ -13,3 +12,6 @@ scipy
 python_dotenv~=1.2
 requests~=2.32
 uvicorn
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+python-multipart>=0.0.6

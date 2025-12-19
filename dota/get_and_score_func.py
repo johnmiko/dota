@@ -4,25 +4,26 @@ from logging import getLogger
 
 import pandas as pd
 
-from constants import SCORES_CSV_FILE, ALREADY_WATCHED_FILE, SCORES_ALL_COLS_CSV_FILE, \
-    FINAL_SCORE_COLS, \
-    HISTORIC_FILE, REDO_HISTORIC_SCORES, WHOLE_GAME_SCORE_COLS, LATEST_HISTORIC_FILE, SCORES_COLS, \
-    SCORES_ALL_COLS_FOR_EXCEL_CSV_FILE
+# from constants import SCORES_CSV_FILE, ALREADY_WATCHED_FILE, SCORES_ALL_COLS_CSV_FILE, \
+#     FINAL_SCORE_COLS, \
+#     HISTORIC_FILE, REDO_HISTORIC_SCORES, WHOLE_GAME_SCORE_COLS, LATEST_HISTORIC_FILE, SCORES_COLS, \
+#     SCORES_ALL_COLS_FOR_EXCEL_CSV_FILE
+from constants import FINAL_SCORE_COLS, WHOLE_GAME_SCORE_COLS, SCORES_COLS
 from dota.calcs import calculate_all_game_statistics
 from dota.calculate_scores import calculate_scores
 
 logger = getLogger(__name__)
 
 
-def get_df_of_games_that_need_scored():
-    if REDO_HISTORIC_SCORES:
-        df_raw = pd.read_csv(HISTORIC_FILE)
-        logger.info("recalculating all historic scores")
-        df = df_raw
-    else:
-        df = pd.read_csv(LATEST_HISTORIC_FILE)
-        logger.info("calculating scores for games in past 6 months")
-    return df
+# def get_df_of_games_that_need_scored():
+#     if REDO_HISTORIC_SCORES:
+#         df_raw = pd.read_csv(HISTORIC_FILE)
+#         logger.info("recalculating all historic scores")
+#         df = df_raw
+#     else:
+#         df = pd.read_csv(LATEST_HISTORIC_FILE)
+#         logger.info("calculating scores for games in past 6 months")
+#     return df
 
 
 def clean_df_and_fill_nas(df):
