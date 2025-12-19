@@ -188,10 +188,10 @@ async def get_matches_cached(limit: int = 100) -> List[Dict[str, Any]]:
     try:
         db = SessionLocal()
         try:
-            # Fetch cached matches ordered by final_score desc
+            # Fetch cached matches ordered by final_score desc, handling NULLs
             rows = (
                 db.query(CachedMatch)
-                .order_by(CachedMatch.final_score.desc())
+                .order_by(CachedMatch.final_score.desc().nulls_last())
                 .limit(limit)
                 .all()
             )
