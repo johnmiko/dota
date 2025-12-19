@@ -66,11 +66,35 @@ async def health_check():
         db_status = "connected"
     except Exception as e:
         db_status = f"error: {str(e)}"
-    
+    # Masked DB URL for verification (no password)
+    masked_db_url = None
+    try:
+        db_url = os.getenv("DATABASE_URL")
+        if db_url:
+            masked_db_url = _mask_url(db_url)
+    except Exception:
+        masked_db_url = None
+
     return {
         "status": "healthy",
-        "database": db_status
+        "database": db_status,
+        "db_url": masked_db_url,
     }
+
+def _mask_url(url: str) -> str:
+    try:
+        if "@" in url and "://" in url:
+            scheme, rest = url.split("://", 1)
+            creds, hostdb = rest.split("@", 1)
+            if ":" in creds:
+                user, _pwd = creds.split(":", 1)
+                creds_masked = f"{user}:***"
+            else:
+                creds_masked = creds
+            return f"{scheme}://{creds_masked}@{hostdb}"
+    except Exception:
+        pass
+    return url
 
 
 @app.get("/api/matches")
@@ -158,6 +182,24 @@ async def rate_match(request: RateMatchRequest, db: Session = Depends(get_db)):
         return {"status": "success"}
     except Exception as e:
         db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/ratings")
+async def list_ratings(limit: int = 50, db: Session = Depends(get_db)):
+    try:
+        qs = db.query(MatchRating).order_by(MatchRating.created_at.desc()).limit(limit).all()
+        return [
+            {
+                "match_id": r.match_id,
+                "title": r.title,
+                "score": r.score,
+                "created_at": r.created_at.isoformat(),
+                "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+            }
+            for r in qs
+        ]
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
