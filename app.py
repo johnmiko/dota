@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from constants import SCORES_COLS, FINAL_SCORE_COLS, WHOLE_GAME_SCORE_COLS
-from database import SessionLocal, MatchRating, init_db, get_db, engine
+from datetime import datetime
+from database import SessionLocal, MatchRating, CachedMatch, init_db, get_db, engine
 from dota.api import fetch_dota_data_from_api
 from dota.get_and_score_func import clean_df_and_fill_nas, calculate_all_game_statistics, calculate_scores
 
@@ -38,7 +39,6 @@ app.add_middleware(
 
 class RateMatchRequest(BaseModel):
     match_id: int
-    title: str = ""
     score: int
 
 
@@ -50,7 +50,7 @@ async def index():
         <head><title>Dota Game Finder</title></head>
         <body>
             <h1>Dota Game Finder API</h1>
-            <p>API endpoints available at /api/matches, /api/recalculate, /api/rate_match, /api/health</p>
+            <p>API endpoints available at /api/matches, /api/matches_cached, /api/recalculate, /api/rate_match, /api/health</p>
         </body>
     </html>
     """
@@ -129,6 +129,32 @@ async def get_matches() -> List[Dict[str, Any]]:
         if mask.any():
             df.loc[(df[['radiant_team_name', 'dire_team_name']] == '???').any(axis=1), ['final_score']] = \
                 df[['final_score']] / 2
+        # Pretty format for days-ago
+        def format_days_ago_pretty(days_ago, date_val):
+            try:
+                days = abs(float(days_ago))
+            except Exception:
+                return None
+            if days < 1:
+                try:
+                    delta_hours = int(max(1, round(abs((datetime.now() - date_val).total_seconds()) / 3600)))
+                except Exception:
+                    delta_hours = 0
+                return f"{delta_hours} hour{'s' if delta_hours != 1 else ''} ago" if delta_hours else "today"
+            if days < 7:
+                d = int(round(days))
+                return f"{d} day{'s' if d != 1 else ''} ago"
+            if days < 30:
+                weeks = int(round(days / 7))
+                return f"{weeks} week{'s' if weeks != 1 else ''} ago"
+            months = int(round(days / 30))
+            return f"{months} month{'s' if months != 1 else ''} ago"
+
+        try:
+            df['days_ago_pretty'] = df.apply(lambda r: format_days_ago_pretty(r.get('days_ago'), r.get('date')), axis=1)
+        except Exception:
+            df['days_ago_pretty'] = None
+
         df = df.sort_values('final_score', ascending=False)
 
         # Add user ratings from database
@@ -157,23 +183,83 @@ async def recalculate():
     return {"status": "success"}
 
 
+@app.get("/api/matches_cached")
+async def get_matches_cached(limit: int = 100) -> List[Dict[str, Any]]:
+    try:
+        db = SessionLocal()
+        try:
+            # Fetch cached matches ordered by final_score desc
+            rows = (
+                db.query(CachedMatch)
+                .order_by(CachedMatch.final_score.desc())
+                .limit(limit)
+                .all()
+            )
+
+            # Map to dicts with expected fields
+            base = [
+                {
+                    "match_id": r.match_id,
+                    "title": r.title,
+                    "days_ago": r.days_ago,
+                    "days_ago_pretty": r.days_ago_pretty,
+                    "final_score": r.final_score,
+                    "first_fight_at": None,
+                    "tournament": r.tournament,
+                    "radiant_team_name": r.radiant_team_name,
+                    "dire_team_name": r.dire_team_name,
+                    "duration_min": r.duration_min,
+                }
+                for r in rows
+            ]
+
+            # Add user ratings from database
+            rated_matches = {str(r.match_id): r for r in db.query(MatchRating).all()}
+            for item in base:
+                rid = str(item["match_id"]) if item.get("match_id") is not None else None
+                rating = rated_matches.get(rid) if rid is not None else None
+                item["user_score"] = getattr(rating, "score", None)
+                item["user_title"] = getattr(rating, "title", "")
+
+            return base
+        finally:
+            db.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/rate_match")
 async def rate_match(request: RateMatchRequest, db: Session = Depends(get_db)):
     try:
         match_id = str(request.match_id)
+
+        # Derive the current match title from the computed dataset
+        try:
+            df = fetch_dota_data_from_api()
+            df = clean_df_and_fill_nas(df)
+            df['watched'] = False
+            df = calculate_all_game_statistics(df)
+            # Find the row with this match_id
+            row = df.loc[df['match_id'] == int(request.match_id)]
+            derived_title = None
+            if not row.empty:
+                derived_title = row.iloc[0].get('title')
+        except Exception:
+            derived_title = None
 
         # Check if rating exists
         rating = db.query(MatchRating).filter(MatchRating.match_id == match_id).first()
 
         if rating:
             # Update existing rating
-            rating.title = request.title
             rating.score = request.score
+            if derived_title:
+                rating.title = derived_title
         else:
             # Create new rating
             rating = MatchRating(
                 match_id=match_id,
-                title=request.title,
+                title=derived_title or "",
                 score=request.score
             )
             db.add(rating)

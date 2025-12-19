@@ -113,14 +113,20 @@ def calc_time_ago(df):
     df['start_time'] = df['start_time'].fillna(0)
     df['date'] = pd.to_datetime(df['start_time'], unit='s')
     # Not accounting for UTC
+    # Improvement, remove the time_ago column completely and just use days_ago, then add the string on the frontend
     df2 = pd.DataFrame()
     df2['dif'] = datetime.now() - df['date']
     df2['time_ago'] = None
+    df2['days_ago'] = None
     df2.loc[df2['dif'].dt.days < 7, 'time_ago'] = df2['dif'].dt.days.astype(str) + ' days ago'
+    df2.loc[df2['dif'].dt.days < 7, 'days_ago'] = df2['dif'].dt.days.astype(str)
     df2.loc[df2['dif'].dt.days == 0, 'time_ago'] = (df2['dif'].dt.seconds / 3600).astype(int).astype(str) + ' hours ago'
+    df2.loc[df2['dif'].dt.days == 0, 'days_ago'] = (df2['dif'].dt.seconds / 3600).astype(int).astype(str)
     df2.loc[df2['dif'].dt.days >= 7, 'time_ago'] = (df2['dif'].dt.days / 7).astype(int).astype(str) + ' weeks ago'
+    df2.loc[df2['dif'].dt.days >= 7, 'days_ago'] = (df2['dif'].dt.days).astype(int).astype(str)
     df2['months_ago'] = ((df2['dif']) / np.timedelta64(4, 'W')).astype(int)
     df2.loc[df2['months_ago'] > 0, 'time_ago'] = df2['months_ago'].astype(str) + ' months ago'
+    df2.loc[df2['months_ago'] > 0, 'days_ago'] = df2['months_ago'].astype(str)
     df['time_ago'] = df2['time_ago']
     return df
 

@@ -19,7 +19,8 @@ WHOLE_GAME_SCORE_COLS = [
 SCORES_COLS = [
     'match_id', 
     'title', 
-    'time_ago', 
+    'days_ago', 
+    'days_ago_pretty',
     'final_score', 
     'first_fight_at', 
     'tournament',

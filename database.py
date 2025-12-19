@@ -27,10 +27,25 @@ class MatchRating(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     match_id = Column(String, unique=True, index=True, nullable=False)
-    title = Column(String, default="")
+    title = Column(String, nullable=False)
     score = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class CachedMatch(Base):
+    __tablename__ = "cached_matches"
+
+    id = Column(Integer, primary_key=True, index=True)
+    match_id = Column(String, unique=True, index=True, nullable=False)
+    title = Column(String, nullable=True)
+    final_score = Column(Float, nullable=True)
+    days_ago = Column(Float, nullable=True)
+    days_ago_pretty = Column(String, nullable=True)
+    tournament = Column(String, nullable=True)
+    radiant_team_name = Column(String, nullable=True)
+    dire_team_name = Column(String, nullable=True)
+    duration_min = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 # Create tables
 def init_db():
@@ -38,6 +53,15 @@ def init_db():
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         Base.metadata.create_all(bind=engine)
+        # Ensure 'title' is NOT NULL in Postgres (migration-lite)
+        try:
+            if engine.dialect.name == "postgresql":
+                conn = engine.connect()
+                conn.execute(text("ALTER TABLE match_ratings ALTER COLUMN title SET NOT NULL"))
+                conn.close()
+        except Exception:
+            # Ignore if already set or on SQLite
+            pass
     except Exception as e:
         print(f"Error initializing database: {e}")
         raise
