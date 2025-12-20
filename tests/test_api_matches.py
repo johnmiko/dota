@@ -53,7 +53,7 @@ def test_api_matches_happy_path(monkeypatch):
     monkeypatch.setattr(app_mod, "fetch_dota_data_from_api", lambda: df)
     monkeypatch.setattr(app_mod, "clean_df_and_fill_nas", lambda d: d)
     monkeypatch.setattr(app_mod, "calculate_all_game_statistics", lambda d: d)
-    monkeypatch.setattr(app_mod, "calculate_scores", lambda d: d)
+    monkeypatch.setattr(app_mod, "calculate_statistics_scores", lambda d: d)
 
     resp = client.get("/api/matches")
     assert resp.status_code == 200
@@ -132,7 +132,7 @@ def test_api_matches_duplicate_ids(monkeypatch):
     monkeypatch.setattr(app_mod, "fetch_dota_data_from_api", lambda: df)
     monkeypatch.setattr(app_mod, "clean_df_and_fill_nas", lambda d: d)
     monkeypatch.setattr(app_mod, "calculate_all_game_statistics", lambda d: d)
-    monkeypatch.setattr(app_mod, "calculate_scores", lambda d: d)
+    monkeypatch.setattr(app_mod, "calculate_statistics_scores", lambda d: d)
 
     resp = client.get("/api/matches")
     # Desired behavior after dedupe: 200 with one item

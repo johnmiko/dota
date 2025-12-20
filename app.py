@@ -13,7 +13,9 @@ from constants import SCORES_COLS, FINAL_SCORE_COLS, WHOLE_GAME_SCORE_COLS
 from datetime import datetime
 from database import SessionLocal, MatchRating, CachedMatch, LatestMatch, init_db, get_db, engine
 from dota.api import fetch_dota_data_from_api
-from dota.get_and_score_func import clean_df_and_fill_nas, calculate_all_game_statistics, calculate_scores
+from dota.calculate_scores import calculate_subjective_weighted_scores, calculate_statistics_scores
+from dota.get_and_score_func import clean_df_and_fill_nas, calculate_all_game_statistics
+from dota.utils import format_days_ago_pretty
 
 # Initialize database tables
 init_db()
@@ -101,61 +103,11 @@ def _mask_url(url: str) -> str:
 async def get_matches() -> List[Dict[str, Any]]:
     try:
         df = fetch_dota_data_from_api()
-
-        # Clean and fill NAs
         df = clean_df_and_fill_nas(df)
-
-        # Skip watched for now, or add logic if needed
-        # For simplicity, assume all are unwatched
         df['watched'] = False
-
-        # Calculate statistics and scores
         df = calculate_all_game_statistics(df)
-        df = calculate_scores(df)
-
-        # Calculate interesting_score and final_score as in original
-        df['interesting_score'] = df[['lead_is_small_score', 'min_in_lead_score', 'swing_score',
-                                      'barracks_comeback_score']].max(axis=1)
-        weights = {c: 1 for c in FINAL_SCORE_COLS}
-        weights['interesting_score'] = 3
-        weights['aegis_steals_score'] = 0.1
-        df[FINAL_SCORE_COLS] = df[FINAL_SCORE_COLS].apply(pd.to_numeric, errors='coerce')
-        df['final_score_total'] = df[FINAL_SCORE_COLS].mul(pd.Series(weights)).sum(axis=1)
-        df['final_score_total'] = df['final_score_total'].astype('float')
-        df['final_score'] = (df['final_score_total'] / sum(weights.values()) * 100).round(0)
-        df[WHOLE_GAME_SCORE_COLS] = df[WHOLE_GAME_SCORE_COLS].apply(pd.to_numeric, errors='coerce')
-        df['whole_game_score'] = df[WHOLE_GAME_SCORE_COLS].max(axis=1).round(2)
-        mask = (df[['radiant_team_name', 'dire_team_name']] == '???').any(axis=1)
-        if mask.any():
-            df.loc[(df[['radiant_team_name', 'dire_team_name']] == '???').any(axis=1), ['final_score']] = \
-                df[['final_score']] / 2
-        # Pretty format for days-ago
-        def format_days_ago_pretty(days_ago, date_val):
-            try:
-                days = abs(float(days_ago))
-            except Exception:
-                return None
-            if days < 1:
-                try:
-                    delta_hours = int(max(1, round(abs((datetime.now() - date_val).total_seconds()) / 3600)))
-                except Exception:
-                    delta_hours = 0
-                return f"{delta_hours} hour{'s' if delta_hours != 1 else ''} ago" if delta_hours else "today"
-            if days < 7:
-                d = int(round(days))
-                return f"{d} day{'s' if d != 1 else ''} ago"
-            if days < 30:
-                weeks = int(round(days / 7))
-                return f"{weeks} week{'s' if weeks != 1 else ''} ago"
-            months = int(round(days / 30))
-            return f"{months} month{'s' if months != 1 else ''} ago"
-
-        try:
-            df['days_ago_pretty'] = df.apply(lambda r: format_days_ago_pretty(r.get('days_ago'), r.get('date')), axis=1)
-        except Exception:
-            df['days_ago_pretty'] = None
-
-        df = df.sort_values('final_score', ascending=False)
+        df = calculate_statistics_scores(df)
+        df = calculate_subjective_weighted_scores()
 
         # Add user ratings from database
         db = SessionLocal()
@@ -206,7 +158,7 @@ def _refresh_cached_matches(days_limit: int = 100) -> int:
         df = clean_df_and_fill_nas(df)
         df['watched'] = False
         df = calculate_all_game_statistics(df)
-        df = calculate_scores(df)
+        df = calculate_statistics_scores(df)
 
         # Filter to recent window
         try:

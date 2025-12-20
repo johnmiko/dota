@@ -105,3 +105,23 @@ def update_df_watched():
     df_watched['last_watched_on'] = df_watched['last_watched_on'].fillna(datetime.today())
     df_watched['times_watched'] = df_watched['times_watched'].fillna(1)
     df_watched.to_csv(ALREADY_WATCHED_FILE, index=False, header=True)
+
+def format_days_ago_pretty(days_ago, date_val):
+    try:
+        days = abs(float(days_ago))
+    except Exception:
+        return None
+    if days < 1:
+        try:
+            delta_hours = int(max(1, round(abs((datetime.now() - date_val).total_seconds()) / 3600)))
+        except Exception:
+            delta_hours = 0
+        return f"{delta_hours} hour{'s' if delta_hours != 1 else ''} ago" if delta_hours else "today"
+    if days < 7:
+        d = int(round(days))
+        return f"{d} day{'s' if d != 1 else ''} ago"
+    if days < 30:
+        weeks = int(round(days / 7))
+        return f"{weeks} week{'s' if weeks != 1 else ''} ago"
+    months = int(round(days / 30))
+    return f"{months} month{'s' if months != 1 else ''} ago"

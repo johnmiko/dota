@@ -10,7 +10,7 @@ import pandas as pd
 #     SCORES_ALL_COLS_FOR_EXCEL_CSV_FILE
 from constants import FINAL_SCORE_COLS, WHOLE_GAME_SCORE_COLS, SCORES_COLS
 from dota.calcs import calculate_all_game_statistics
-from dota.calculate_scores import calculate_scores
+from dota.calculate_scores import calculate_statistics_scores
 
 logger = getLogger(__name__)
 
@@ -56,7 +56,7 @@ def get_and_score_func(df=None):
     df_watched.to_csv(ALREADY_WATCHED_FILE, index=False, header=True)
     df['watched'] = df['match_id'].isin(df_watched['match_id'])
     df = calculate_all_game_statistics(df)
-    df = calculate_scores(df)
+    df = calculate_statistics_scores(df)
     # Game is interesting if it is over 63 minutes, it is close, there is a comeback
     # Do OR operation of these
     df['interesting_score'] = df[['lead_is_small_score', 'min_in_lead_score', 'swing_score',

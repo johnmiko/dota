@@ -5,48 +5,12 @@ from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
 from database import engine, SessionLocal, CachedMatch
+from dota.utils import format_days_ago_pretty
 
 load_dotenv()
 
 CSV_PATH = os.getenv("SCORES_CSV_PATH", "text/scores_all_cols.csv")
 DAYS_LIMIT = int(os.getenv("SCORES_DAYS_LIMIT", "30"))
-
-
-def format_days_ago_pretty(days_ago, date_val):
-	try:
-		days = abs(float(days_ago))
-	except Exception:
-		days = None
-	if days is not None:
-		if days < 1:
-			try:
-				delta_hours = int(max(1, round(abs((datetime.now() - date_val).total_seconds()) / 3600))) if date_val is not None else 0
-			except Exception:
-				delta_hours = 0
-			return f"{delta_hours} hour{'s' if delta_hours != 1 else ''} ago" if delta_hours else "today"
-		if days < 7:
-			d = int(round(days))
-			return f"{d} day{'s' if d != 1 else ''} ago"
-		if days < 30:
-			weeks = int(round(days / 7))
-			return f"{weeks} week{'s' if weeks != 1 else ''} ago"
-		months = int(round(days / 30))
-		return f"{months} month{'s' if months != 1 else ''} ago"
-	# Fallback: if days_ago not available, compute from date
-	try:
-		if isinstance(date_val, datetime):
-			delta = datetime.now() - date_val
-			days = delta.days
-			if days < 7:
-				return f"{days} day{'s' if days != 1 else ''} ago"
-			if days < 30:
-				weeks = int(round(days / 7))
-				return f"{weeks} week{'s' if weeks != 1 else ''} ago"
-			months = int(round(days / 30))
-			return f"{months} month{'s' if months != 1 else ''} ago"
-	except Exception:
-		pass
-	return None
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:

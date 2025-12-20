@@ -6,7 +6,7 @@ import requests
 from constants import FINAL_SCORE_COLS, \
     WHOLE_GAME_SCORE_COLS, SCORES_COLS
 from dota.calcs import calculate_all_game_statistics
-from dota.calculate_scores import calculate_scores
+from dota.calculate_scores import calculate_statistics_scores
 
 logger = getLogger(__name__)
 
@@ -58,7 +58,7 @@ def clean_df_and_fill_nas(df):
 #   also leave in the manual option to manually recalculate the scores
 df = clean_df_and_fill_nas(df)
 df = calculate_all_game_statistics(df)
-df = calculate_scores(df)
+df = calculate_statistics_scores(df)
 # Game is interesting if it is over 63 minutes, it is close, there is a comeback
 # Do OR operation of these
 df['interesting_score'] = df[['lead_is_small_score', 'min_in_lead_score', 'duration_min_score', 'swing_score',

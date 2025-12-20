@@ -2,9 +2,10 @@ import numpy as np
 
 from constants import TEAMS_I_LIKE
 from dota.score import linear_map
+from dota.utils import format_days_ago_pretty
 
 
-def calculate_scores(df):
+def calculate_statistics_scores(df):
     col = 'days_ago'
     df = linear_map(df, col, f'{col}_score', -100, 0, 0, 1)
 
@@ -78,4 +79,30 @@ def calculate_scores(df):
     # from constants import TEAMS_I_LIKE
 
     df.loc[df["title"].str.contains('|'.join(TEAMS_I_LIKE, ), case=False), f'good_team_playing_score'] = 1
+    return df
+
+def calculate_subjective_weighted_scores(df):
+    df['interesting_score'] = df[['lead_is_small_score', 'min_in_lead_score', 'swing_score',
+                                    'barracks_comeback_score']].max(axis=1)
+    weights = {c: 1 for c in FINAL_SCORE_COLS}
+    weights['interesting_score'] = 3
+    weights['aegis_steals_score'] = 0.1
+    df[FINAL_SCORE_COLS] = df[FINAL_SCORE_COLS].apply(pd.to_numeric, errors='coerce')
+    df['final_score_total'] = df[FINAL_SCORE_COLS].mul(pd.Series(weights)).sum(axis=1)
+    df['final_score_total'] = df['final_score_total'].astype('float')
+    df['final_score'] = (df['final_score_total'] / sum(weights.values()) * 100).round(0)
+    df[WHOLE_GAME_SCORE_COLS] = df[WHOLE_GAME_SCORE_COLS].apply(pd.to_numeric, errors='coerce')
+    df['whole_game_score'] = df[WHOLE_GAME_SCORE_COLS].max(axis=1).round(2)
+    mask = (df[['radiant_team_name', 'dire_team_name']] == '???').any(axis=1)
+    if mask.any():
+        df.loc[(df[['radiant_team_name', 'dire_team_name']] == '???').any(axis=1), ['final_score']] = \
+            df[['final_score']] / 2
+    # Pretty format for days-ago
+
+    try:
+        df['days_ago_pretty'] = df.apply(lambda r: format_days_ago_pretty(r.get('days_ago'), r.get('date')), axis=1)
+    except Exception:
+        df['days_ago_pretty'] = None
+
+    df = df.sort_values('final_score', ascending=False)
     return df
