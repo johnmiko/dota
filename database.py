@@ -47,6 +47,25 @@ class CachedMatch(Base):
     duration_min = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
+class LatestMatch(Base):
+    __tablename__ = "latest_matches"
+
+    id = Column(Integer, primary_key=True, index=True)
+    match_id = Column(String, unique=True, index=True, nullable=False)
+    title = Column(String, nullable=True)
+    days_ago = Column(Float, nullable=True)
+    days_ago_pretty = Column(String, nullable=True)
+    final_score = Column(Float, nullable=True)
+    first_fight_at = Column(String, nullable=True)
+    tournament = Column(String, nullable=True)
+    radiant_team_name = Column(String, nullable=True)
+    dire_team_name = Column(String, nullable=True)
+    duration_min = Column(Integer, nullable=True)
+    user_score = Column(Integer, nullable=True)
+    user_title = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 # Create tables
 def init_db():
     try:
