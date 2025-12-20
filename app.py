@@ -2,7 +2,7 @@ import os
 from typing import List, Dict, Any
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -183,8 +183,118 @@ async def recalculate():
     return {"status": "success"}
 
 
+def _refresh_cached_matches(days_limit: int = 100) -> int:
+    """Fetch latest matches, keep last N days, upsert into cached_matches, prune old rows."""
+    session = SessionLocal()
+    upserted = 0
+    try:
+        df = fetch_dota_data_from_api()
+        df = clean_df_and_fill_nas(df)
+        df['watched'] = False
+        df = calculate_all_game_statistics(df)
+        df = calculate_scores(df)
+
+        # Filter to recent window
+        try:
+            df['days_ago'] = pd.to_numeric(df.get('days_ago'), errors='coerce')
+            df = df[(df['days_ago'] >= 0) & (df['days_ago'] <= days_limit)]
+        except Exception:
+            pass
+
+        # Compute pretty days-ago
+        def format_days_ago_pretty(days_ago, date_val):
+            try:
+                days = abs(float(days_ago))
+            except Exception:
+                days = None
+            if days is not None:
+                if days < 1:
+                    try:
+                        delta_hours = int(max(1, round(abs((datetime.now() - date_val).total_seconds()) / 3600))) if date_val is not None else 0
+                    except Exception:
+                        delta_hours = 0
+                    return f"{delta_hours} hour{'s' if delta_hours != 1 else ''} ago" if delta_hours else "today"
+                if days < 7:
+                    d = int(round(days))
+                    return f"{d} day{'s' if d != 1 else ''} ago"
+                if days < 30:
+                    weeks = int(round(days / 7))
+                    return f"{weeks} week{'s' if weeks != 1 else ''} ago"
+                months = int(round(days / 30))
+                return f"{months} month{'s' if months != 1 else ''} ago"
+            try:
+                if isinstance(date_val, datetime):
+                    delta = datetime.now() - date_val
+                    days = delta.days
+                    if days < 7:
+                        return f"{days} day{'s' if days != 1 else ''} ago"
+                    if days < 30:
+                        weeks = int(round(days / 7))
+                        return f"{weeks} week{'s' if weeks != 1 else ''} ago"
+                    months = int(round(days / 30))
+                    return f"{months} month{'s' if months != 1 else ''} ago"
+            except Exception:
+                pass
+            return None
+
+        try:
+            df['days_ago_pretty'] = df.apply(lambda r: format_days_ago_pretty(r.get('days_ago'), r.get('date')), axis=1)
+        except Exception:
+            pass
+
+        # Select columns
+        cols = ['match_id', 'title', 'days_ago', 'days_ago_pretty', 'final_score', 'tournament', 'radiant_team_name', 'dire_team_name', 'duration_min']
+        missing = [c for c in cols if c not in df.columns]
+        for c in missing:
+            df[c] = None
+        df_sel = df[cols].copy()
+
+        # Upsert and prune
+        for _, row in df_sel.iterrows():
+            mid = str(row['match_id']) if pd.notna(row['match_id']) else None
+            if not mid:
+                continue
+            existing = session.query(CachedMatch).filter(CachedMatch.match_id == mid).first()
+            if existing:
+                existing.title = row['title'] if pd.notna(row['title']) else existing.title
+                existing.final_score = float(row['final_score']) if pd.notna(row['final_score']) else existing.final_score
+                existing.days_ago = float(row['days_ago']) if pd.notna(row['days_ago']) else existing.days_ago
+                existing.days_ago_pretty = row['days_ago_pretty'] if pd.notna(row['days_ago_pretty']) else existing.days_ago_pretty
+                existing.tournament = row['tournament'] if pd.notna(row['tournament']) else existing.tournament
+                existing.radiant_team_name = row['radiant_team_name'] if pd.notna(row['radiant_team_name']) else existing.radiant_team_name
+                existing.dire_team_name = row['dire_team_name'] if pd.notna(row['dire_team_name']) else existing.dire_team_name
+                existing.duration_min = int(row['duration_min']) if pd.notna(row['duration_min']) else existing.duration_min
+            else:
+                session.add(CachedMatch(
+                    match_id=mid,
+                    title=row['title'] if pd.notna(row['title']) else None,
+                    final_score=float(row['final_score']) if pd.notna(row['final_score']) else None,
+                    days_ago=float(row['days_ago']) if pd.notna(row['days_ago']) else None,
+                    days_ago_pretty=row['days_ago_pretty'] if pd.notna(row['days_ago_pretty']) else None,
+                    tournament=row['tournament'] if pd.notna(row['tournament']) else None,
+                    radiant_team_name=row['radiant_team_name'] if pd.notna(row['radiant_team_name']) else None,
+                    dire_team_name=row['dire_team_name'] if pd.notna(row['dire_team_name']) else None,
+                    duration_min=int(row['duration_min']) if pd.notna(row['duration_min']) else None,
+                ))
+            upserted += 1
+
+        # Prune rows older than window
+        try:
+            session.query(CachedMatch).filter(CachedMatch.days_ago > days_limit).delete()
+        except Exception:
+            pass
+
+        session.commit()
+        return upserted
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
 @app.get("/api/matches_cached")
-async def get_matches_cached(limit: int = 100) -> List[Dict[str, Any]]:
+async def get_matches_cached(limit: int = 100, background_tasks: BackgroundTasks = None) -> List[Dict[str, Any]]:
     try:
         db = SessionLocal()
         try:
@@ -220,6 +330,40 @@ async def get_matches_cached(limit: int = 100) -> List[Dict[str, Any]]:
                 rating = rated_matches.get(rid) if rid is not None else None
                 item["user_score"] = getattr(rating, "score", None)
                 item["user_title"] = getattr(rating, "title", "")
+
+            # Fire-and-forget refresh to keep cache warm (last 100 days)
+            if background_tasks is not None:
+                background_tasks.add_task(_refresh_cached_matches, 100)
+
+            # If cache empty, fall back to live fetch synchronously
+            if not base:
+                try:
+                    _refresh_cached_matches(100)
+                    rows = (
+                        db.query(CachedMatch)
+                        .order_by(CachedMatch.final_score.desc().nulls_last())
+                        .limit(limit)
+                        .all()
+                    )
+                    base = [
+                        {
+                            "match_id": r.match_id,
+                            "title": r.title,
+                            "days_ago": r.days_ago,
+                            "days_ago_pretty": r.days_ago_pretty,
+                            "final_score": r.final_score,
+                            "first_fight_at": None,
+                            "tournament": r.tournament,
+                            "radiant_team_name": r.radiant_team_name,
+                            "dire_team_name": r.dire_team_name,
+                            "duration_min": r.duration_min,
+                            "user_score": getattr(rated_matches.get(str(r.match_id)), "score", None),
+                            "user_title": getattr(rated_matches.get(str(r.match_id)), "title", ""),
+                        }
+                        for r in rows
+                    ]
+                except Exception:
+                    pass
 
             return base
         finally:
