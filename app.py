@@ -166,65 +166,26 @@ async def get_matches() -> List[Dict[str, Any]]:
         finally:
             db.close()
 
-        # Select columns
-        df_scores = df[SCORES_COLS + ['user_score', 'user_title']]
-
-        # Persist to latest_matches table
-        session = SessionLocal()
-        try:
-            session.query(LatestMatch).delete()
-            objects = []
-            for _, row in df_scores.head(100).iterrows():
-                objects.append(
-                    LatestMatch(
-                        match_id=str(row['match_id']),
-                        title=row.get('title'),
-                        days_ago=float(row['days_ago']) if pd.notna(row['days_ago']) else None,
-                        days_ago_pretty=row.get('days_ago_pretty'),
-                        final_score=float(row['final_score']) if pd.notna(row['final_score']) else None,
-                        first_fight_at=row.get('first_fight_at') if 'first_fight_at' in row else None,
-                        tournament=row.get('tournament'),
-                        radiant_team_name=row.get('radiant_team_name'),
-                        dire_team_name=row.get('dire_team_name'),
-                        duration_min=int(row['duration_min']) if pd.notna(row['duration_min']) else None,
-                        user_score=int(row['user_score']) if pd.notna(row['user_score']) else None,
-                        user_title=row.get('user_title'),
-                    )
-                )
-            if objects:
-                session.bulk_save_objects(objects)
-            session.commit()
-        finally:
-            session.close()
-
-        # Return from the persisted table
-        session = SessionLocal()
-        try:
-            rows = (
-                session.query(LatestMatch)
-                .order_by(LatestMatch.final_score.desc().nulls_last())
-                .limit(100)
-                .all()
-            )
-            return [
-                {
-                    "match_id": r.match_id,
-                    "title": r.title,
-                    "days_ago": r.days_ago,
-                    "days_ago_pretty": r.days_ago_pretty,
-                    "final_score": r.final_score,
-                    "first_fight_at": r.first_fight_at,
-                    "tournament": r.tournament,
-                    "radiant_team_name": r.radiant_team_name,
-                    "dire_team_name": r.dire_team_name,
-                    "duration_min": r.duration_min,
-                    "user_score": r.user_score,
-                    "user_title": r.user_title,
-                }
-                for r in rows
-            ]
-        finally:
-            session.close()
+        # Select columns and return top 100
+        df_scores = df[SCORES_COLS + ['user_score', 'user_title']].head(100)
+        
+        return [
+            {
+                "match_id": str(row['match_id']),
+                "title": row.get('title'),
+                "days_ago": float(row['days_ago']) if pd.notna(row['days_ago']) else None,
+                "days_ago_pretty": row.get('days_ago_pretty'),
+                "final_score": float(row['final_score']) if pd.notna(row['final_score']) else None,
+                "first_fight_at": row.get('first_fight_at') if pd.notna(row.get('first_fight_at')) else None,
+                "tournament": row.get('tournament'),
+                "radiant_team_name": row.get('radiant_team_name'),
+                "dire_team_name": row.get('dire_team_name'),
+                "duration_min": int(row['duration_min']) if pd.notna(row['duration_min']) else None,
+                "user_score": int(row['user_score']) if pd.notna(row['user_score']) else None,
+                "user_title": row.get('user_title'),
+            }
+            for _, row in df_scores.iterrows()
+        ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
