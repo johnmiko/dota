@@ -167,42 +167,6 @@ def _refresh_cached_matches(days_limit: int = 100) -> int:
         except Exception:
             pass
 
-        # Compute pretty days-ago
-        def format_days_ago_pretty(days_ago, date_val):
-            try:
-                days = abs(float(days_ago))
-            except Exception:
-                days = None
-            if days is not None:
-                if days < 1:
-                    try:
-                        delta_hours = int(max(1, round(abs((datetime.now() - date_val).total_seconds()) / 3600))) if date_val is not None else 0
-                    except Exception:
-                        delta_hours = 0
-                    return f"{delta_hours} hour{'s' if delta_hours != 1 else ''} ago" if delta_hours else "today"
-                if days < 7:
-                    d = int(round(days))
-                    return f"{d} day{'s' if d != 1 else ''} ago"
-                if days < 30:
-                    weeks = int(round(days / 7))
-                    return f"{weeks} week{'s' if weeks != 1 else ''} ago"
-                months = int(round(days / 30))
-                return f"{months} month{'s' if months != 1 else ''} ago"
-            try:
-                if isinstance(date_val, datetime):
-                    delta = datetime.now() - date_val
-                    days = delta.days
-                    if days < 7:
-                        return f"{days} day{'s' if days != 1 else ''} ago"
-                    if days < 30:
-                        weeks = int(round(days / 7))
-                        return f"{weeks} week{'s' if weeks != 1 else ''} ago"
-                    months = int(round(days / 30))
-                    return f"{months} month{'s' if months != 1 else ''} ago"
-            except Exception:
-                pass
-            return None
-
         try:
             df['days_ago_pretty'] = df.apply(lambda r: format_days_ago_pretty(r.get('days_ago'), r.get('date')), axis=1)
         except Exception:
