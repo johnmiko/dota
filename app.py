@@ -112,7 +112,6 @@ async def get_matches() -> List[Dict[str, Any]]:
         df['watched'] = False
         df = calculate_all_game_statistics(df)
         df = calculate_statistics_scores(df)
-        import pdb; pdb.set_trace()
         df = calculate_subjective_weighted_scores(df)
 
         # Add user ratings from database
