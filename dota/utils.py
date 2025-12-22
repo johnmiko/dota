@@ -7,7 +7,7 @@ import pandas as pd
 pd.options.display.width = 0
 from pandas.errors import EmptyDataError
 
-from constants import DATE_STR_FORMAT, ALREADY_WATCHED_FILE, LAST_RUN_FILE
+# from constants import DATE_STR_FORMAT, ALREADY_WATCHED_FILE, LAST_RUN_FILE
 
 logger = getLogger(__name__)
 
@@ -68,13 +68,13 @@ def read_csv_wrapper(filename, **kwargs):
     return df
 
 
-def last_ran(filename):
-    with open(filename, 'r') as f:
-        last_ran_str = f.read()
-    last_ran_date = datetime.strptime(last_ran_str, DATE_STR_FORMAT)
-    with open(filename, 'w') as f:
-        f.write(datetime.now().strftime(DATE_STR_FORMAT))
-    return last_ran_date
+# def last_ran(filename):
+#     with open(filename, 'r') as f:
+#         last_ran_str = f.read()
+#     last_ran_date = datetime.strptime(last_ran_str, DATE_STR_FORMAT)
+#     with open(filename, 'w') as f:
+#         f.write(datetime.now().strftime(DATE_STR_FORMAT))
+#     return last_ran_date
 
 
 def should_run(last_ran_dict, key, run_every_x_hours):
