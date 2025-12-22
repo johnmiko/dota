@@ -1,6 +1,7 @@
 import numpy as np
+import pandas as pd
 
-from constants import TEAMS_I_LIKE
+from constants import FINAL_SCORE_COLS, TEAMS_I_LIKE, WHOLE_GAME_SCORE_COLS
 from dota.score import linear_map
 from dota.utils import format_days_ago_pretty
 

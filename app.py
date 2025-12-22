@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import List, Dict, Any
 
 import pandas as pd
@@ -16,6 +17,9 @@ from dota.api import fetch_dota_data_from_api
 from dota.calculate_scores import calculate_subjective_weighted_scores, calculate_statistics_scores
 from dota.get_and_score_func import clean_df_and_fill_nas, calculate_all_game_statistics
 from dota.utils import format_days_ago_pretty
+
+# Initialize logging
+logger = logging.getLogger(__name__)
 
 # Initialize database tables
 init_db()
@@ -102,12 +106,14 @@ def _mask_url(url: str) -> str:
 @app.get("/api/matches")
 async def get_matches() -> List[Dict[str, Any]]:
     try:
+
         df = fetch_dota_data_from_api()
         df = clean_df_and_fill_nas(df)
         df['watched'] = False
         df = calculate_all_game_statistics(df)
         df = calculate_statistics_scores(df)
-        df = calculate_subjective_weighted_scores()
+        import pdb; pdb.set_trace()
+        df = calculate_subjective_weighted_scores(df)
 
         # Add user ratings from database
         db = SessionLocal()
@@ -139,6 +145,7 @@ async def get_matches() -> List[Dict[str, Any]]:
             for _, row in df_scores.iterrows()
         ]
     except Exception as e:
+        logger.error(e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
