@@ -190,29 +190,44 @@ def _refresh_cached_matches(days_limit: int = 100) -> int:
             mid = str(row['match_id']) if pd.notna(row['match_id']) else None
             if not mid:
                 continue
-            existing = session.query(CachedMatch).filter(CachedMatch.match_id == mid).first()
-            if existing:
-                existing.title = row['title'] if pd.notna(row['title']) else existing.title
-                existing.final_score = float(row['final_score']) if pd.notna(row['final_score']) else existing.final_score
-                existing.days_ago = float(row['days_ago']) if pd.notna(row['days_ago']) else existing.days_ago
-                existing.days_ago_pretty = row['days_ago_pretty'] if pd.notna(row['days_ago_pretty']) else existing.days_ago_pretty
-                existing.tournament = row['tournament'] if pd.notna(row['tournament']) else existing.tournament
-                existing.radiant_team_name = row['radiant_team_name'] if pd.notna(row['radiant_team_name']) else existing.radiant_team_name
-                existing.dire_team_name = row['dire_team_name'] if pd.notna(row['dire_team_name']) else existing.dire_team_name
-                existing.duration_min = int(row['duration_min']) if pd.notna(row['duration_min']) else existing.duration_min
-            else:
-                session.add(CachedMatch(
-                    match_id=mid,
-                    title=row['title'] if pd.notna(row['title']) else None,
-                    final_score=float(row['final_score']) if pd.notna(row['final_score']) else None,
-                    days_ago=float(row['days_ago']) if pd.notna(row['days_ago']) else None,
-                    days_ago_pretty=row['days_ago_pretty'] if pd.notna(row['days_ago_pretty']) else None,
-                    tournament=row['tournament'] if pd.notna(row['tournament']) else None,
-                    radiant_team_name=row['radiant_team_name'] if pd.notna(row['radiant_team_name']) else None,
-                    dire_team_name=row['dire_team_name'] if pd.notna(row['dire_team_name']) else None,
-                    duration_min=int(row['duration_min']) if pd.notna(row['duration_min']) else None,
-                ))
-            upserted += 1
+            
+            # Skip matches with "???" in the title
+            title = row['title'] if pd.notna(row['title']) else ''
+            if '???' in str(title):
+                continue
+            
+            try:
+                existing = session.query(CachedMatch).filter(CachedMatch.match_id == mid).first()
+                if existing:
+                    existing.title = row['title'] if pd.notna(row['title']) else existing.title
+                    existing.final_score = float(row['final_score']) if pd.notna(row['final_score']) else existing.final_score
+                    existing.days_ago = float(row['days_ago']) if pd.notna(row['days_ago']) else existing.days_ago
+                    existing.days_ago_pretty = row['days_ago_pretty'] if pd.notna(row['days_ago_pretty']) else existing.days_ago_pretty
+                    existing.tournament = row['tournament'] if pd.notna(row['tournament']) else existing.tournament
+                    existing.radiant_team_name = row['radiant_team_name'] if pd.notna(row['radiant_team_name']) else existing.radiant_team_name
+                    existing.dire_team_name = row['dire_team_name'] if pd.notna(row['dire_team_name']) else existing.dire_team_name
+                    existing.duration_min = int(row['duration_min']) if pd.notna(row['duration_min']) else existing.duration_min
+                else:
+                    session.add(CachedMatch(
+                        match_id=mid,
+                        title=row['title'] if pd.notna(row['title']) else None,
+                        final_score=float(row['final_score']) if pd.notna(row['final_score']) else None,
+                        days_ago=float(row['days_ago']) if pd.notna(row['days_ago']) else None,
+                        days_ago_pretty=row['days_ago_pretty'] if pd.notna(row['days_ago_pretty']) else None,
+                        tournament=row['tournament'] if pd.notna(row['tournament']) else None,
+                        radiant_team_name=row['radiant_team_name'] if pd.notna(row['radiant_team_name']) else None,
+                        dire_team_name=row['dire_team_name'] if pd.notna(row['dire_team_name']) else None,
+                        duration_min=int(row['duration_min']) if pd.notna(row['duration_min']) else None,
+                    ))
+                # Flush this row to detect conflicts early
+                session.flush()
+                upserted += 1
+            except Exception as e:
+                # Skip this row if there's a duplicate key error or other issue
+                session.rollback()
+                print(f"Warning: Skipping match {mid} due to error: {e}")
+                # Continue processing other rows
+                continue
 
         # Prune rows older than window
         try:
