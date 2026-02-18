@@ -1,28 +1,16 @@
-import os
-import sys
-import pathlib
 import datetime as dt
-
-# Force local SQLite DB for tests before importing app/database
-os.environ.setdefault("DATABASE_URL", "sqlite:///./test_api_matches.db")
-
-# Ensure the project root (containing app.py) is on the path
-PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 import pandas as pd
 from fastapi.testclient import TestClient
 
 import app as app_mod
-from database import SessionLocal, LatestMatch
-import pytest
+from database import SessionLocal, CachedMatch
 
 client = TestClient(app_mod.app)
 
 
 def test_api_matches_happy_path(monkeypatch):
-    """Calls /api/matches with a mocked dataset and verifies persistence & shape."""
+    """Calls /api/matches with mocked data and verifies response shape."""
     now = dt.datetime.now()
     df = pd.DataFrame([
         {
@@ -54,6 +42,11 @@ def test_api_matches_happy_path(monkeypatch):
     monkeypatch.setattr(app_mod, "clean_df_and_fill_nas", lambda d: d)
     monkeypatch.setattr(app_mod, "calculate_all_game_statistics", lambda d: d)
     monkeypatch.setattr(app_mod, "calculate_statistics_scores", lambda d: d)
+    monkeypatch.setattr(
+        app_mod,
+        "calculate_subjective_weighted_scores",
+        lambda d: d.assign(final_score=88.8, days_ago_pretty="12 hours ago"),
+    )
 
     resp = client.get("/api/matches")
     assert resp.status_code == 200
@@ -73,20 +66,8 @@ def test_api_matches_happy_path(monkeypatch):
     assert item["dire_team_name"] == "Dire"
     assert item["duration_min"] == 45
 
-    # Verify persistence in latest_matches table
-    s = SessionLocal()
-    try:
-        rows = s.query(LatestMatch).all()
-        assert len(rows) == 1
-        assert rows[0].match_id == "123456"
-        assert rows[0].title == "Radiant vs Dire"
-    finally:
-        s.close()
-
-
-@pytest.mark.xfail(reason="Duplicate match_id currently triggers unique constraint until dedupe is implemented")
-def test_api_matches_duplicate_ids(monkeypatch):
-    """Edge-case: two rows with the same match_id should result in a single persisted item."""
+def test_api_matches_cached_populates_cache(monkeypatch):
+    """Calls /api/matches_cached and verifies cache table upsert behavior."""
     now = dt.datetime.now()
     df = pd.DataFrame([
         {
@@ -109,8 +90,8 @@ def test_api_matches_duplicate_ids(monkeypatch):
             "tournament": "Edge Cup",
         },
         {
-            "match_id": 222222,
-            "title": "Game A (dup)",
+            "match_id": 333333,
+            "title": "??? redacted title",  # skipped by cache refresh logic
             "days_ago": 1.0,
             "date": now - dt.timedelta(days=1),
             "lead_is_small_score": 0.6,
@@ -134,50 +115,17 @@ def test_api_matches_duplicate_ids(monkeypatch):
     monkeypatch.setattr(app_mod, "calculate_all_game_statistics", lambda d: d)
     monkeypatch.setattr(app_mod, "calculate_statistics_scores", lambda d: d)
 
-    resp = client.get("/api/matches")
-    # Desired behavior after dedupe: 200 with one item
+    resp = client.get("/api/matches_cached?limit=10")
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, list)
     assert len(data) == 1
+    assert data[0]["match_id"] == "222222"
 
-
-def test_latest_matches_crud():
-    """Direct DB test: create, read, verify, delete a LatestMatch entry."""
     s = SessionLocal()
     try:
-        # Add a new entry
-        new_match = LatestMatch(
-            match_id="test_123",
-            title="Test Match for CRUD",
-            days_ago=2.5,
-            days_ago_pretty="2 days ago",
-            final_score=75.5,
-            first_fight_at="00:10",
-            tournament="Test Tournament",
-            radiant_team_name="Test Radiant",
-            dire_team_name="Test Dire",
-            duration_min=50,
-            user_score=8,
-            user_title="Great Game"
-        )
-        s.add(new_match)
-        s.commit()
-
-        # Query and verify it was added
-        retrieved = s.query(LatestMatch).filter(LatestMatch.match_id == "test_123").first()
-        assert retrieved is not None
-        assert retrieved.title == "Test Match for CRUD"
-        assert retrieved.final_score == 75.5
-        assert retrieved.duration_min == 50
-        assert retrieved.user_score == 8
-
-        # Delete the entry
-        s.delete(retrieved)
-        s.commit()
-
-        # Verify it was deleted
-        deleted = s.query(LatestMatch).filter(LatestMatch.match_id == "test_123").first()
-        assert deleted is None
+        rows = s.query(CachedMatch).all()
+        assert len(rows) == 1
+        assert rows[0].match_id == "222222"
     finally:
         s.close()

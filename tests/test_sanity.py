@@ -1,14 +1,12 @@
-# def test_sanity():
-import pandas as pd
+from constants import SCORES_COLS, FINAL_SCORE_COLS, WHOLE_GAME_SCORE_COLS
 
-from constants import HISTORIC_FILE
 
-df_manual_scores = pd.read_csv("games_that_were_interesting.txt")
-df_historic = pd.read_csv(HISTORIC_FILE)
-df_to_recalculate = df_historic[df_historic['match_id'].isin(df_manual_scores['match_id'])]
-df_to_recalculate = df_historic.merge(
-    df_manual_scores[["match_id", "my_score"]],
-    on="match_id",
-    how="inner"
-)
-df_scored = get_and_score_func(df_to_recalculate)
+def test_constants_have_expected_core_fields():
+    assert "match_id" in SCORES_COLS
+    assert "title" in SCORES_COLS
+    assert "final_score" in SCORES_COLS
+
+    assert "interesting_score" in FINAL_SCORE_COLS
+    assert "days_ago_score" in FINAL_SCORE_COLS
+
+    assert "swing_score" in WHOLE_GAME_SCORE_COLS
