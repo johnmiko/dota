@@ -234,7 +234,9 @@ def calculate_all_game_statistics(df):
         teamfights = df.loc[i, 'teamfights']
         df = add_total_objectives_cols(df, i)
         if teamfights is None:
-            df.loc[i, 'first_fight_at'] = 10000
+            # Keep this as a string to avoid mixed-dtype assignment errors
+            # on strict string-backed dataframes.
+            df.loc[i, 'first_fight_at'] = "10000"
             df.loc[i, 'fight_%_of_game'] = 0
             df.loc[i, 'avg_fight_length'] = 0
         else:
