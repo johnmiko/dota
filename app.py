@@ -138,6 +138,7 @@ async def get_matches() -> List[Dict[str, Any]]:
                 "radiant_team_name": row.get('radiant_team_name'),
                 "dire_team_name": row.get('dire_team_name'),
                 "duration_min": int(row['duration_min']) if pd.notna(row['duration_min']) else None,
+                "start_time": int(row['start_time']) if pd.notna(row.get('start_time')) else None,
                 "user_score": int(row['user_score']) if pd.notna(row['user_score']) else None,
                 "user_title": row.get('user_title'),
             }
@@ -169,7 +170,7 @@ def _refresh_cached_matches(days_limit: int = 100) -> int:
         # Filter to recent window
         try:
             df['days_ago'] = pd.to_numeric(df.get('days_ago'), errors='coerce')
-            df = df[(df['days_ago'] >= 0) & (df['days_ago'] <= days_limit)]
+            df = df[(df['days_ago'] >= -days_limit) & (df['days_ago'] <= 0)]
         except Exception:
             pass
 
@@ -179,7 +180,7 @@ def _refresh_cached_matches(days_limit: int = 100) -> int:
             pass
 
         # Select columns
-        cols = ['match_id', 'title', 'days_ago', 'days_ago_pretty', 'final_score', 'tournament', 'radiant_team_name', 'dire_team_name', 'duration_min']
+        cols = ['match_id', 'title', 'days_ago', 'days_ago_pretty', 'final_score', 'tournament', 'radiant_team_name', 'dire_team_name', 'duration_min', 'start_time']
         missing = [c for c in cols if c not in df.columns]
         for c in missing:
             df[c] = None
@@ -207,6 +208,7 @@ def _refresh_cached_matches(days_limit: int = 100) -> int:
                     existing.radiant_team_name = row['radiant_team_name'] if pd.notna(row['radiant_team_name']) else existing.radiant_team_name
                     existing.dire_team_name = row['dire_team_name'] if pd.notna(row['dire_team_name']) else existing.dire_team_name
                     existing.duration_min = int(row['duration_min']) if pd.notna(row['duration_min']) else existing.duration_min
+                    existing.start_time = int(row['start_time']) if pd.notna(row.get('start_time')) else existing.start_time
                 else:
                     session.add(CachedMatch(
                         match_id=mid,
@@ -218,6 +220,7 @@ def _refresh_cached_matches(days_limit: int = 100) -> int:
                         radiant_team_name=row['radiant_team_name'] if pd.notna(row['radiant_team_name']) else None,
                         dire_team_name=row['dire_team_name'] if pd.notna(row['dire_team_name']) else None,
                         duration_min=int(row['duration_min']) if pd.notna(row['duration_min']) else None,
+                        start_time=int(row['start_time']) if pd.notna(row.get('start_time')) else None,
                     ))
                 # Flush this row to detect conflicts early
                 session.flush()
@@ -231,7 +234,7 @@ def _refresh_cached_matches(days_limit: int = 100) -> int:
 
         # Prune rows older than window
         try:
-            session.query(CachedMatch).filter(CachedMatch.days_ago > days_limit).delete()
+            session.query(CachedMatch).filter(CachedMatch.days_ago < -days_limit).delete()
         except Exception:
             pass
 
@@ -270,6 +273,7 @@ async def get_matches_cached(limit: int = 100, background_tasks: BackgroundTasks
                     "radiant_team_name": r.radiant_team_name,
                     "dire_team_name": r.dire_team_name,
                     "duration_min": r.duration_min,
+                    "start_time": getattr(r, "start_time", None),
                 }
                 for r in rows
             ]
@@ -308,6 +312,7 @@ async def get_matches_cached(limit: int = 100, background_tasks: BackgroundTasks
                             "radiant_team_name": r.radiant_team_name,
                             "dire_team_name": r.dire_team_name,
                             "duration_min": r.duration_min,
+                            "start_time": getattr(r, "start_time", None),
                             "user_score": getattr(rated_matches.get(str(r.match_id)), "score", None),
                             "user_title": getattr(rated_matches.get(str(r.match_id)), "title", ""),
                         }

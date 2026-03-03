@@ -45,6 +45,7 @@ class CachedMatch(Base):
     radiant_team_name = Column(String, nullable=True)
     dire_team_name = Column(String, nullable=True)
     duration_min = Column(Integer, nullable=True)
+    start_time = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -80,6 +81,12 @@ def init_db():
                 conn.close()
         except Exception:
             # Ignore if already set or on SQLite
+            pass
+        # Add start_time column
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE cached_matches ADD COLUMN start_time INTEGER"))
+        except Exception:
             pass
     except Exception as e:
         print(f"Error initializing database: {e}")

@@ -27,5 +27,6 @@ SCORES_COLS = [
     # Extra fields included in API output for UI display
     'radiant_team_name',
     'dire_team_name',
-    'duration_min'
+    'duration_min',
+    'start_time'
 ]
