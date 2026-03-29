@@ -1,0 +1,24 @@
+name: Warm Dota Cache
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+
+jobs:
+  warm-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Warm cached matches endpoint
+        env:
+          DOTA_API_URL: https://dota-production-9f0c.up.railway.app
+        run: |
+          set -euo pipefail
+          echo "Warming cache at ${DOTA_API_URL}/api/matches_cached?limit=1"
+          curl -sS \
+            --fail \
+            --retry 3 \
+            --retry-delay 5 \
+            --max-time 60 \
+            "${DOTA_API_URL}/api/matches_cached?limit=1" > /tmp/cache_response.json
+          wc -c /tmp/cache_response.json

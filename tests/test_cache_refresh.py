@@ -13,7 +13,7 @@ def test_refresh_cached_matches_upserts_and_prunes(monkeypatch):
             {
                 "match_id": 123,
                 "title": "Good Match",
-                "days_ago": 1.0,
+                "days_ago": -1.0,
                 "date": now - dt.timedelta(days=1),
                 "final_score": 77.5,
                 "radiant_team_name": "Team A",
@@ -24,7 +24,7 @@ def test_refresh_cached_matches_upserts_and_prunes(monkeypatch):
             {
                 "match_id": 124,
                 "title": "Too Old",
-                "days_ago": 200.0,
+                "days_ago": -200.0,
                 "date": now - dt.timedelta(days=200),
                 "final_score": 10.0,
                 "radiant_team_name": "Team C",
@@ -35,7 +35,7 @@ def test_refresh_cached_matches_upserts_and_prunes(monkeypatch):
             {
                 "match_id": 125,
                 "title": "??? hidden",
-                "days_ago": 2.0,
+                "days_ago": -2.0,
                 "date": now - dt.timedelta(days=2),
                 "final_score": 50.0,
                 "radiant_team_name": "Team E",
@@ -50,6 +50,7 @@ def test_refresh_cached_matches_upserts_and_prunes(monkeypatch):
     monkeypatch.setattr(app_mod, "clean_df_and_fill_nas", lambda d: d)
     monkeypatch.setattr(app_mod, "calculate_all_game_statistics", lambda d: d)
     monkeypatch.setattr(app_mod, "calculate_statistics_scores", lambda d: d)
+    monkeypatch.setattr(app_mod, "calculate_subjective_weighted_scores", lambda d: d)
 
     inserted = app_mod._refresh_cached_matches(days_limit=100)
     assert inserted == 1

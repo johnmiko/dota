@@ -166,6 +166,7 @@ def _refresh_cached_matches(days_limit: int = 100) -> int:
         df['watched'] = False
         df = calculate_all_game_statistics(df)
         df = calculate_statistics_scores(df)
+        df = calculate_subjective_weighted_scores(df)
 
         # Filter to recent window
         try:

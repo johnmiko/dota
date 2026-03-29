@@ -34,6 +34,7 @@ def test_api_matches_happy_path(monkeypatch):
             "duration_min": 45,
             "first_fight_at": "00:05",
             "tournament": "Test Cup",
+            "start_time": int(now.timestamp()),
         }
     ])
 
@@ -73,7 +74,7 @@ def test_api_matches_cached_populates_cache(monkeypatch):
         {
             "match_id": 222222,
             "title": "Game A",
-            "days_ago": 1.0,
+            "days_ago": -1.0,
             "date": now - dt.timedelta(days=1),
             "lead_is_small_score": 0.3,
             "min_in_lead_score": 0.2,
@@ -92,7 +93,7 @@ def test_api_matches_cached_populates_cache(monkeypatch):
         {
             "match_id": 333333,
             "title": "??? redacted title",  # skipped by cache refresh logic
-            "days_ago": 1.0,
+            "days_ago": -1.0,
             "date": now - dt.timedelta(days=1),
             "lead_is_small_score": 0.6,
             "min_in_lead_score": 0.7,
@@ -114,6 +115,7 @@ def test_api_matches_cached_populates_cache(monkeypatch):
     monkeypatch.setattr(app_mod, "clean_df_and_fill_nas", lambda d: d)
     monkeypatch.setattr(app_mod, "calculate_all_game_statistics", lambda d: d)
     monkeypatch.setattr(app_mod, "calculate_statistics_scores", lambda d: d)
+    monkeypatch.setattr(app_mod, "calculate_subjective_weighted_scores", lambda d: d.assign(final_score=75.0))
 
     resp = client.get("/api/matches_cached?limit=10")
     assert resp.status_code == 200
